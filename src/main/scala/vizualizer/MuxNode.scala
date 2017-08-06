@@ -34,6 +34,7 @@ object MuxNode {
     val fox = LiteralNode("fox", BigInt(1))
     val dog = LiteralNode("dog", BigInt(5))
     val cat = LiteralNode("cat", BigInt(2))
+    val reg1 = RegisterNode("reg1")
     val mux1 = MuxNode("struct1")
     val mux2 = MuxNode("struct2")
     val writer = new PrintWriter(new File("mux1.dot"))
@@ -41,6 +42,7 @@ object MuxNode {
     writer.println(fox.render)
     writer.println(dog.render)
     writer.println(cat.render)
+    writer.println(reg1.render)
     writer.write(mux1.render)
     writer.write(mux2.render)
 
@@ -48,6 +50,10 @@ object MuxNode {
     writer.println(s"${dog.name} -> ${mux1.in1};")
     writer.println(s"${cat.name} -> ${mux1.in2};")
     writer.println(s"\n${mux1.out} -> ${mux2.in1}")
+    writer.println(s"\n${mux2.out} -> ${reg1.in}")
+    writer.println(s"\n${reg1.out} -> ${mux2.in2}")
+
+
     writer.println(s"}")
 
     writer.close()
