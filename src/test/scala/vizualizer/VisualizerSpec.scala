@@ -5,8 +5,6 @@ package vizualizer
 import chisel3._
 import chisel3.testers.BasicTester
 import firrtl.annotations.Annotation
-import firrtl.ir.{Input => _, Module => _, Output => _}
-import firrtl.{Driver => _}
 import org.scalatest._
 
 /** Circuit Top instantiates A and B and both A and B instantiate C
@@ -111,7 +109,7 @@ class AnnotatingVisualizerSpec extends FreeSpec with Matchers {
         case ChiselExecutionSuccess(Some(circuit), emitted, _) =>
           println(s"done!")
         case _ =>
-          assert(false)
+          throw new Exception("bad parse")
       }
     }
   }

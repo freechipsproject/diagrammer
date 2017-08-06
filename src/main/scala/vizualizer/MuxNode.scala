@@ -4,11 +4,12 @@ package vizualizer
 
 import java.io.{File, PrintWriter}
 
-case class MuxNode(name: String) extends DotNode {
+case class MuxNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
   def select: String = s"$name:select"
   def in1: String = s"$name:in1"
   def in2: String = s"$name:in2"
   def out: String = s"$name:out"
+
   def render: String ={
     s"""
        |$name [label=<
@@ -31,14 +32,16 @@ import sys.process._
 
 object MuxNode {
   def main(args: Array[String]): Unit = {
-    val fox = LiteralNode("fox", BigInt(1))
-    val dog = LiteralNode("dog", BigInt(5))
-    val cat = LiteralNode("cat", BigInt(2))
-    val reg1 = RegisterNode("reg1")
-    val mux1 = MuxNode("struct1")
-    val mux2 = MuxNode("struct2")
+    val fox = LiteralNode("fox", BigInt(1), None)
+    val dog = LiteralNode("dog", BigInt(5), None)
+    val cat = LiteralNode("cat", BigInt(2), None)
+    val reg1 = RegisterNode("reg1", None)
+    val mux1 = MuxNode("struct1", None)
+    val mux2 = MuxNode("struct2", None)
     val writer = new PrintWriter(new File("mux1.dot"))
-    writer.println(s"digraph structs {\nnode [shape=plaintext]")
+    writer.println(s"digraph structs {")
+    writer.println(s"graph [splines=ortho]")
+    writer.println(s"node [shape=plaintext]")
     writer.println(fox.render)
     writer.println(dog.render)
     writer.println(cat.render)

@@ -2,9 +2,9 @@
 
 package vizualizer
 
-case class LiteralNode(name: String, value: BigInt) extends DotNode {
+case class LiteralNode(name: String, value: BigInt, parentOpt: Option[DotNode]) extends DotNode {
   def render: String = {
-    s"""$name [shape = circle label="$value"]
+    s"""$absoluteName [shape = circle label="$value"]
      """.stripMargin
   }
 }
