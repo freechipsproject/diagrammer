@@ -2,7 +2,9 @@
 
 package vizualizer
 
+import scala.collection.mutable.ArrayBuffer
+
 trait DotNode {
   def render: String
-  def children: Seq[DotNode] = Seq.empty
+  def children: ArrayBuffer[DotNode] = new ArrayBuffer[DotNode]
 }
