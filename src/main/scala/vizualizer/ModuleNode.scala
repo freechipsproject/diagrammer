@@ -10,17 +10,19 @@ import scala.collection.mutable.ArrayBuffer
 case class ModuleNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
   val inputs: ArrayBuffer[DotNode] = new ArrayBuffer()
   val outputs: ArrayBuffer[DotNode] = new ArrayBuffer()
+  val namedNodes: mutable.HashMap[String, DotNode] = new mutable.HashMap()
+  val connections: mutable.HashMap[String, String] = new mutable.HashMap()
   val localConnections: mutable.HashMap[String, String] = new mutable.HashMap()
 
   def render: String = {
     s"""
-       |subgraph cluster_$absoluteName {
+       |subgraph $absoluteName {
        |  label="$name"
        |  ${inputs.map(_.render).mkString("\n")}
        |  ${outputs.map(_.render).mkString("\n")}
        |  ${children.map(_.render).mkString("\n")}
        |
-       |  ${localConnections.map { case (k, v) => s"$v -> $k"}.mkString("\n")}
+       |  ${connections.map { case (k, v) => s"$v -> $k"}.mkString("\n")}
        |}
      """.stripMargin
   }
@@ -33,6 +35,27 @@ case class ModuleNode(name: String, parentOpt: Option[DotNode]) extends DotNode 
     s"cluster_$baseName"
   }
 
+  def connect(destination: DotNode, source: DotNode): Unit = {
+    connect(destination.absoluteName, source.absoluteName)
+  }
+
+  def connect(destinationName: String, source: DotNode): Unit = {
+    connect(destinationName, source.absoluteName)
+  }
+
+  def connect(destination: DotNode, sourceName: String): Unit = {
+    connect(destination.absoluteName, sourceName)
+  }
+
+  def connect(destination: String, source: String): Unit = {
+    connections(destination) = source
+  }
+
+  //scalastyle:off method.name
+  def += (childNode: DotNode): Unit = {
+    namedNodes(childNode.name) = childNode
+    children += childNode
+  }
 }
 
 import sys.process._

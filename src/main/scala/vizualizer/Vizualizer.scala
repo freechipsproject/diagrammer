@@ -13,6 +13,8 @@ import firrtl.passes.Pass
 
 import scala.collection.mutable
 
+import sys.process._
+
 //scalastyle:off magic.number
 /**
   * This and the Visualizer transform class are a highly schematic implementation of a
@@ -29,23 +31,14 @@ object VisualizerAnnotation {
 
 //noinspection ScalaStyle
 object VizualizerPass extends Pass {
-  case class DotNode(firrtlName: String)
-
   def run (c:Circuit) : Circuit = {
     var indentLevel = 0
     def indent: String = " " * indentLevel
     println(s"We are in ${new java.io.File(".").getAbsolutePath}")
-    val printFile = new PrintWriter(new java.io.File("viz1.dot"))
+    val printFile = new PrintWriter(new java.io.File(s"${c.main}.dot"))
     def pl(s: String): Unit = {
       printFile.println(s.split("\n").mkString(indent, s"\n$indent", ""))
     }
-
-    def code(a: AnyRef): String = {
-      s"node${a.hashCode().abs}"
-    }
-
-    val connections = new mutable.HashMap[String, String]
-    val refsToName = new mutable.HashMap[WRef, String]
 
     /**
       * finds the specified module name in the circuit
@@ -65,40 +58,38 @@ object VizualizerPass extends Pass {
       }
     }
 
-    def processModule(modulePrefix: String, myModule: DefModule): Unit = {
-      def expand(name: String): String = if(modulePrefix.isEmpty) name else modulePrefix + "_" + name
+    def processModule(modulePrefix: String, myModule: DefModule, moduleNode: ModuleNode): DotNode = {
+      def expand(name: String): String = {
+        s"${moduleNode.absoluteName}_$name".replaceAll("""\.""", "_")
+      }
 
-      indentLevel += 1
-      pl(s"subgraph cluster${code(myModule)} {")
-      indentLevel += 1
-      pl(s"""label = "${myModule.name}";""")
-
-      def renameExpression(expression: firrtl.ir.Expression): String = {
+      def processExpression(expression: firrtl.ir.Expression): String = {
         val result = expression match {
           case mux: firrtl.ir.Mux =>
-            val muxName = code(mux)
-            val labelA :: labelB :: labelS :: labelC :: Nil = List("A", "B", "S", "C").map(tag => s"$muxName$tag")
-            pl(s"""struct${muxName} [label="{<$labelA>} A | <$labelB> B } | <$labelS> A? | <$labelC C"] """)
-
-            //TODO: Chick figure out mux design
-            //            connections(labelA) = renameExpression(mux.tval)
-            //            connections(labelB) = renameExpression(mux.fval)
-            //            connections(labelS) = renameExpression(mux.cond)
-            labelC
+            val muxNode = MuxNode(s"mux_${mux.hashCode()}", Some(moduleNode))
+            moduleNode += muxNode
+            moduleNode.connect(muxNode.select, processExpression(mux.cond))
+            moduleNode.connect(muxNode.in1, processExpression(mux.tval))
+            moduleNode.connect(muxNode.in2, processExpression(mux.fval))
+            muxNode.out
           case WRef(name, tpe, kind, gender) =>
-            expand(name)
-          case WSubField(subExpression, name, tpe, gender) =>
-            renameExpression(subExpression)
-          case WSubIndex(subExpression, value, tpe, gender) =>
-            renameExpression(subExpression)
+            s"${moduleNode.absoluteName}_$name"
+          case subfield: WSubField =>
+            expand(subfield.serialize)
+          case subindex: WSubIndex =>
+            expand(subindex.serialize)
           case ValidIf(condition, value, tpe) =>
             ""
           case DoPrim(op, args, const, tpe) =>
             ""
           case c: UIntLiteral =>
-            s"${c.value}"
+            val uInt = LiteralNode(s"${c.hashCode}", c.value, Some(moduleNode))
+            moduleNode += uInt
+            uInt.absoluteName
           case c: SIntLiteral =>
-            s"${c.value}"
+            val uInt = LiteralNode(s"${c.hashCode}", c.value, Some(moduleNode))
+            moduleNode += uInt
+            uInt.absoluteName
           case _ =>
             throw new Exception(s"renameExpression:error: unhandled expression $expression")
         }
@@ -106,7 +97,7 @@ object VizualizerPass extends Pass {
       }
 
       def processPorts(module: DefModule): Unit = {
-        def makeName(s: String): String = if(modulePrefix.isEmpty) s else s"${modulePrefix}_${s}"
+        def makeName(s: String): String = s"${moduleNode.absoluteName}_$s"
 
         def showPorts(isInput: Boolean): Unit = {
           val (dir, subGraphName) = if(isInput) {
@@ -118,19 +109,11 @@ object VizualizerPass extends Pass {
 
           val ports = module.ports.flatMap {
             case port if port.direction == dir =>
-              Some(makeName(port.name))
+              Some(PortNode(port.name, Some(moduleNode)))
             case _ => None
           }
-          if(ports.nonEmpty) {
-            indentLevel += 1
-            pl(s"subgraph cluster${myModule.name}.inputs {")
-            indentLevel += 1
-            ports.foreach { port =>
-              pl(s"""${code(port)} [label = "$port"]""")
-            }
-            indentLevel -= 1
-            pl(s"}")
-            indentLevel -= 1
+          ports.foreach { port =>
+            moduleNode += port
           }
         }
 
@@ -138,62 +121,65 @@ object VizualizerPass extends Pass {
         showPorts(isInput = false)
       }
 
-      def processStatement(modulePrefix: String, s: Statement): Statement = {
+      def processStatement(s: Statement): Unit = {
         s match {
           case block: Block =>
-            block.stmts.map { subStatement =>
-              processStatement(modulePrefix, subStatement)
+            block.stmts.foreach { subStatement =>
+              println(s"processing substatement $subStatement")
+              processStatement(subStatement)
             }
-            block
           case con: Connect =>
             con.loc match {
               case WRef(name, _, _, _) =>
-                connections(code(name)) = code(renameExpression(con.expr))
+                moduleNode.connect(expand(name), processExpression(con.expr))
               case (_: WSubField | _: WSubIndex) =>
-                connections(expand(con.loc.serialize)) = renameExpression(con.expr)
+                moduleNode.connect(expand(con.loc.serialize), processExpression(con.expr))
             }
-            c
           case WDefInstance(info, instanceName, moduleName, _) =>
             val subModule = findModule(moduleName, c)
             val newPrefix = if(modulePrefix.isEmpty) instanceName else modulePrefix + "_" + instanceName
+            val subModuleNode = ModuleNode(instanceName, Some(moduleNode))
+            moduleNode += subModuleNode
             // log(s"declaration:WDefInstance:$instanceName:$moduleName prefix now $newPrefix")
-            processModule(newPrefix, subModule)
-            s
+            processModule(newPrefix, subModule, subModuleNode)
 
           case DefNode(info, name, expression) =>
             val expandedName = expand(name)
+          case reg: DefRegister =>
+            val regNode = RegisterNode(reg.name, Some(moduleNode))
+            moduleNode += regNode
           case _ =>
           // let everything else slide
         }
-        s
       }
 
       myModule match {
         case module: firrtl.ir.Module =>
           processPorts(myModule)
-          processStatement(s"${modulePrefix}_${module.name}", module.body)
+          processStatement(module.body)
         case extModule: ExtModule =>
         case a =>
           println(s"got a $a")
       }
-      indentLevel -= 1
-      pl("}")
-      indentLevel -= 1
+
+      moduleNode
     }
 
     c.modules.find(_.name == c.main) match {
       case Some(topModule) =>
         pl(s"digraph ${topModule.name} {")
-        processModule("", topModule)
-        connections.foreach { case (lhs, rhs) =>
-          pl(s"$lhs -> $rhs")
-        }
+        val topModuleNode = ModuleNode(c.main, parentOpt = None)
+        processModule("", topModule, topModuleNode)
+        pl(topModuleNode.render)
         pl("}")
       case _ =>
         println(s"could not find top module ${c.main}")
     }
 
     printFile.close()
+
+    s"dot -Tpng -O ${c.main}.dot".!!
+    s"open ${c.main}.dot.png".!!
     c
   }
 }
@@ -207,7 +193,6 @@ class VisualizerTransform extends Transform {
     getMyAnnotations(state) match {
       case Nil => state
       case myAnnotations =>
-        println(s"in transform $state")
         VizualizerPass.run(state.circuit)
         state
     }

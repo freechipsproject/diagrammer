@@ -6,10 +6,11 @@ case class RegisterNode(name: String, parentOpt: Option[DotNode]) extends DotNod
   def in: String = s"$name:in"
   def out: String = s"$name:out"
   def render: String = {
-    s"""$absoluteName [label=<
+    s"""struct_$absoluteName [shape="plaintext" label=<
       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
       |  <TR>
       |    <TD PORT="in"> </TD>
+      |     <TD>$name</TD>
       |    <TD PORT="out"> </TD>
       |  </TR>
       |</TABLE>>];""".stripMargin
