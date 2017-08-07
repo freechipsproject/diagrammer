@@ -67,40 +67,77 @@ class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
       }
 
       def processPrimOp(primOp: DoPrim): String = {
+        def addBinOpNode(symbol: String): String = {
+          val opNode = BinaryOpNode(symbol, Some(moduleNode))
+          moduleNode += opNode
+          moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
+          moduleNode.connect(opNode.in2, processExpression(primOp.args.tail.head))
+          opNode.asRhs
+        }
+
+        def addUnaryOpNode(symbol: String): String = {
+          val opNode = UnaryOpNode(symbol, Some(moduleNode))
+          moduleNode += opNode
+          moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
+          opNode.asRhs
+        }
+
+        def addOneArgOneParamOpNode(symbol: String): String = {
+          val opNode = OneArgOneParamOpNode(symbol, Some(moduleNode), primOp.consts.head)
+          moduleNode += opNode
+          moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
+          opNode.asRhs
+        }
+
         primOp.op match {
-          case Eq =>
-            val opNode = BinaryOpNode("eq", Some(moduleNode))
+          case Add => addBinOpNode("add")
+          case Sub => addBinOpNode("sub")
+          case Mul => addBinOpNode("mul")
+          case Div => addBinOpNode("div")
+          case Rem => addBinOpNode("rem")
+
+          case Eq  => addBinOpNode("eq")
+          case Neq => addBinOpNode("neq")
+          case Lt  => addBinOpNode("lt")
+          case Leq => addBinOpNode("lte")
+          case Gt  => addBinOpNode("gt")
+          case Geq => addBinOpNode("gte")
+
+          case Pad => addUnaryOpNode("pad")
+
+          case AsUInt => addUnaryOpNode("asUInt")
+          case AsSInt => addUnaryOpNode("asSInt")
+
+          case Shl => addOneArgOneParamOpNode("shl")
+          case Shr => addOneArgOneParamOpNode("shr")
+
+          case Dshl => addBinOpNode("dshl")
+          case Dshr => addBinOpNode("dshr")
+
+          case Cvt => addUnaryOpNode("cvt")
+          case Neg => addUnaryOpNode("neg")
+          case Not => addUnaryOpNode("not")
+
+          case And => addBinOpNode("and")
+          case Or  => addBinOpNode("or")
+          case Xor => addBinOpNode("xor")
+
+          case Andr => addUnaryOpNode("andr")
+          case Orr  => addUnaryOpNode("orr")
+          case Xorr => addUnaryOpNode("xorr")
+
+          case Cat => addBinOpNode("cat")
+
+          case Bits =>
+            val opNode = OneArgTwoParamOpNode("bits", Some(moduleNode), primOp.consts.head, primOp.consts.tail.head)
             moduleNode += opNode
             moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
-            moduleNode.connect(opNode.in2, processExpression(primOp.args.tail.head))
             opNode.asRhs
-          case Add =>
-            val opNode = BinaryOpNode("add", Some(moduleNode))
-            moduleNode += opNode
-            moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
-            moduleNode.connect(opNode.in2, processExpression(primOp.args.tail.head))
-            opNode.asRhs
-          case Sub =>
-            val opNode = BinaryOpNode("sub", Some(moduleNode))
-            moduleNode += opNode
-            moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
-            moduleNode.connect(opNode.in2, processExpression(primOp.args.tail.head))
-            opNode.asRhs
-          case AsUInt =>
-            val opNode = UnaryOpNode("asUInt", Some(moduleNode))
-            moduleNode += opNode
-            moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
-            opNode.asRhs
-          case AsSInt =>
-            val opNode = UnaryOpNode("asSInt", Some(moduleNode))
-            moduleNode += opNode
-            moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
-            opNode.asRhs
-          case Tail =>
-            val opNode = OneArgOneParamOpNode("tail", Some(moduleNode), primOp.consts.head)
-            moduleNode += opNode
-            moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
-            opNode.asRhs
+
+
+          case Head => addOneArgOneParamOpNode("head")
+          case Tail => addOneArgOneParamOpNode("tail")
+
           case _ =>
             "dummy"
         }
@@ -132,11 +169,11 @@ class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
           case primOp: DoPrim =>
             processPrimOp(primOp)
           case c: UIntLiteral =>
-            val uInt = LiteralNode(s"${c.hashCode}", c.value, Some(moduleNode))
+            val uInt = LiteralNode(s"lit${PrimOpNode.hash}", c.value, Some(moduleNode))
             moduleNode += uInt
             uInt.absoluteName
           case c: SIntLiteral =>
-            val uInt = LiteralNode(s"${c.hashCode}", c.value, Some(moduleNode))
+            val uInt = LiteralNode(s"lit${PrimOpNode.hash}", c.value, Some(moduleNode))
             moduleNode += uInt
             uInt.absoluteName
           case _ =>
@@ -223,6 +260,7 @@ class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
     c.modules.find(_.name == c.main) match {
       case Some(topModule) =>
         pl(s"digraph ${topModule.name} {")
+//        pl(s"graph [splines=ortho];")
         val topModuleNode = ModuleNode(c.main, parentOpt = None)
         processModule("", topModule, topModuleNode)
         pl(topModuleNode.render)

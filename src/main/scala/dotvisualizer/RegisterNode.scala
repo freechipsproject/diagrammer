@@ -3,9 +3,9 @@
 package dotvisualizer
 
 case class RegisterNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
-  override def in: String = s"struct_$absoluteName:in"
-  override def out: String = s"struct_$absoluteName:out"
-  override def asRhs: String = s"struct_$absoluteName:out"
+  override val in: String = s"struct_$absoluteName:in"
+  override val out: String = s"struct_$absoluteName:out"
+  override val asRhs: String = s"struct_$absoluteName:out"
 
   def render: String = {
     s"""struct_$absoluteName [shape="plaintext" label=<

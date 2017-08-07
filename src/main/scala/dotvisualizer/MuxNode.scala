@@ -5,12 +5,12 @@ package dotvisualizer
 import java.io.{File, PrintWriter}
 
 case class MuxNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
-  def select: String = s"$name:select"
-  def in1: String = s"$name:in1"
-  def in2: String = s"$name:in2"
-  override def asRhs: String = s"$name:out"
+  val select: String = s"$name:select"
+  val in1: String = s"$name:in1"
+  val in2: String = s"$name:in2"
+  override val asRhs: String = s"$name:out"
 
-  def render: String ={
+  def render: String = {
     s"""
        |$name [shape = "plaintext" label=<
        |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
