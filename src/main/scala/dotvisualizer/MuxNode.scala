@@ -1,6 +1,6 @@
 // See LICENSE for license details.
 
-package vizualizer
+package dotvisualizer
 
 import java.io.{File, PrintWriter}
 

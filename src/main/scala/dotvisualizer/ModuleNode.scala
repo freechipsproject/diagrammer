@@ -1,6 +1,6 @@
 // See LICENSE for license details.
 
-package vizualizer
+package dotvisualizer
 
 import java.io.{File, PrintWriter}
 
@@ -102,7 +102,7 @@ object ModuleNode {
 
     writer.close()
 
-    "dot -Tpng -O module1.dot".!!
+    "fdp -Tpng -O module1.dot".!!
     "open module1.dot.png".!!
   }
 }

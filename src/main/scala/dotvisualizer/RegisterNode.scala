@@ -1,6 +1,6 @@
 // See LICENSE for license details.
 
-package vizualizer
+package dotvisualizer
 
 case class RegisterNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
   override def in: String = s"struct_$absoluteName:in"

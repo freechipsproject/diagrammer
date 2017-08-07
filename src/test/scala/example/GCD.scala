@@ -3,7 +3,7 @@
 package example
 
 import chisel3._
-import vizualizer.VisualizerAnnotator
+import dotvisualizer.VisualizerAnnotator
 
 class GCD extends Module with VisualizerAnnotator {
   val io = IO(new Bundle {

@@ -1,6 +1,6 @@
 // See LICENSE for license details.
 
-package vizualizer
+package dotvisualizer
 
 case class PrimOpNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
   override def render: String = s"""$absoluteName [label = "$name"]"""

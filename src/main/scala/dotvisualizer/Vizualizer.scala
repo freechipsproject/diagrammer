@@ -1,6 +1,6 @@
 // See LICENSE for license details.
 
-package vizualizer
+package dotvisualizer
 
 import java.io.PrintWriter
 
@@ -30,7 +30,7 @@ object VisualizerAnnotation {
 }
 
 //noinspection ScalaStyle
-object VizualizerPass extends Pass {
+class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
   def run (c:Circuit) : Circuit = {
     val nameToNode: mutable.HashMap[String, DotNode] = new mutable.HashMap()
 
@@ -220,8 +220,6 @@ object VizualizerPass extends Pass {
       moduleNode
     }
 
-    println(c.serialize)
-
     c.modules.find(_.name == c.main) match {
       case Some(topModule) =>
         pl(s"digraph ${topModule.name} {")
@@ -250,7 +248,7 @@ class VisualizerTransform extends Transform {
     getMyAnnotations(state) match {
       case Nil => state
       case myAnnotations =>
-        VizualizerPass.run(state.circuit)
+        new VisualizerPass(myAnnotations).run(state.circuit)
         state
     }
   }
