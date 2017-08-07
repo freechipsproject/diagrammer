@@ -15,7 +15,7 @@ case class ModuleNode(name: String, parentOpt: Option[DotNode]) extends DotNode 
   val localConnections: mutable.HashMap[String, String] = new mutable.HashMap()
 
   def render: String = {
-    s"""
+    val s = s"""
        |subgraph $absoluteName {
        |  label="$name"
        |  ${inputs.map(_.render).mkString("\n")}
@@ -25,14 +25,14 @@ case class ModuleNode(name: String, parentOpt: Option[DotNode]) extends DotNode 
        |  ${connections.map { case (k, v) => s"$v -> $k"}.mkString("\n")}
        |}
      """.stripMargin
+    s
   }
 
   override def absoluteName: String = {
-    val baseName = parentOpt match {
+    parentOpt match {
       case Some(parent) => s"${parent.absoluteName}_$name"
-      case _ => name
+      case _ => s"cluster_$name"
     }
-    s"cluster_$baseName"
   }
 
   def connect(destination: DotNode, source: DotNode): Unit = {
@@ -48,6 +48,7 @@ case class ModuleNode(name: String, parentOpt: Option[DotNode]) extends DotNode 
   }
 
   def connect(destination: String, source: String): Unit = {
+    println(s"Connect: dst $destination src $source")
     connections(destination) = source
   }
 

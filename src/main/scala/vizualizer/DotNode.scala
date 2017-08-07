@@ -14,5 +14,10 @@ trait DotNode {
       case _ => name
     }
   }
+
+  def in: String = absoluteName
+  def out: String = absoluteName
+  def asRhs: String = absoluteName
+
   val children: ArrayBuffer[DotNode] = new ArrayBuffer[DotNode]
 }

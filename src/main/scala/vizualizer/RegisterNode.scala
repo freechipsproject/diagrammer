@@ -3,8 +3,10 @@
 package vizualizer
 
 case class RegisterNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
-  def in: String = s"$name:in"
-  def out: String = s"$name:out"
+  override def in: String = s"struct_$absoluteName:in"
+  override def out: String = s"struct_$absoluteName:out"
+  override def asRhs: String = s"struct_$absoluteName:out"
+
   def render: String = {
     s"""struct_$absoluteName [shape="plaintext" label=<
       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">

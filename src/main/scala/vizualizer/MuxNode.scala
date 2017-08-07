@@ -8,7 +8,7 @@ case class MuxNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
   def select: String = s"$name:select"
   def in1: String = s"$name:in1"
   def in2: String = s"$name:in2"
-  def out: String = s"$name:out"
+  override def asRhs: String = s"$name:out"
 
   def render: String ={
     s"""

@@ -42,11 +42,6 @@ class VizModA(annoParam: Int) extends Module with VisualizerAnnotator {
   val modC = Module(new VizModC(16))
   modC.io.in := io.in
   io.out := modC.io.out
-
-  visualize(this, s"VizModA(ignore param)")
-
-  visualize(io.out, s"VizModA.io.out($annoParam)")
-  visualize(io.out, s"VizModA.io.out(ignore_param)")
 }
 
 class VizModB(widthB: Int) extends Module with VisualizerAnnotator{
@@ -57,31 +52,34 @@ class VizModB(widthB: Int) extends Module with VisualizerAnnotator{
   val modC = Module(new VizModC(widthB))
   modC.io.in := io.in
   io.out := modC.io.out
-
-  visualize(io.in, s"modB.io.in annotated from inside modB")
 }
 
 class TopOfVisualizer extends Module with VisualizerAnnotator {
   val io = IO(new Bundle {
-    val in   = Input(UInt(32.W))
-    val out  = Output(UInt(32.W))
+    val in1    = Input(UInt(32.W))
+    val in2    = Input(UInt(32.W))
+    val select = Input(Bool())
+    val out    = Output(UInt(32.W))
   })
   val x = Reg(UInt(32.W))
   val y = Reg(UInt(32.W))
 
   val modA = Module(new VizModA(64))
-  val modB = Module(new VizModB(32))
+//  val modB = Module(new VizModB(32))
 
-  x := io.in
+  when(io.select) {
+    x := io.in1
+  }
+  .otherwise {
+    x := io.in2
+  }
+
   modA.io.in := x
-  modB.io.in := x
 
-  y := modA.io.out + modB.io.out
+  y := modA.io.out + io.in2
   io.out := y
 
   visualize(this, s"TopOfVisualizer\nWith\nSome new lines")
-
-  visualize(modB.io.in, s"modB.io.in annotated from outside modB")
 }
 
 class VisualizerTester extends BasicTester {
@@ -105,7 +103,7 @@ class AnnotatingVisualizerSpec extends FreeSpec with Matchers {
       |annotations are not resolved at after circuit elaboration,
       |that happens only after emit has been called on circuit""".stripMargin in {
 
-      Driver.execute(Array("--target-dir", "test_run_dir"), () => new TopOfVisualizer) match {
+      Driver.execute(Array("--target-dir", "test_run_dir", "--compiler", "low"), () => new TopOfVisualizer) match {
         case ChiselExecutionSuccess(Some(circuit), emitted, _) =>
           println(s"done!")
         case _ =>

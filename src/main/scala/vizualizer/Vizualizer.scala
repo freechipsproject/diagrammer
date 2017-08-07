@@ -32,6 +32,8 @@ object VisualizerAnnotation {
 //noinspection ScalaStyle
 object VizualizerPass extends Pass {
   def run (c:Circuit) : Circuit = {
+    val nameToNode: mutable.HashMap[String, DotNode] = new mutable.HashMap()
+
     var indentLevel = 0
     def indent: String = " " * indentLevel
     println(s"We are in ${new java.io.File(".").getAbsolutePath}")
@@ -59,11 +61,19 @@ object VizualizerPass extends Pass {
     }
 
     def processModule(modulePrefix: String, myModule: DefModule, moduleNode: ModuleNode): DotNode = {
+      def firrtlName(name: String): String = if(modulePrefix.isEmpty) name else modulePrefix + "." + name
+
       def expand(name: String): String = {
         s"${moduleNode.absoluteName}_$name".replaceAll("""\.""", "_")
       }
 
       def processExpression(expression: firrtl.ir.Expression): String = {
+        def resolveRef(firrtlName: String, dotName: String): String = {
+          nameToNode.get(firrtlName) match {
+            case Some(node) => node.asRhs
+            case _ => dotName
+          }
+        }
         val result = expression match {
           case mux: firrtl.ir.Mux =>
             val muxNode = MuxNode(s"mux_${mux.hashCode()}", Some(moduleNode))
@@ -71,17 +81,20 @@ object VizualizerPass extends Pass {
             moduleNode.connect(muxNode.select, processExpression(mux.cond))
             moduleNode.connect(muxNode.in1, processExpression(mux.tval))
             moduleNode.connect(muxNode.in2, processExpression(mux.fval))
-            muxNode.out
+            muxNode.asRhs
           case WRef(name, tpe, kind, gender) =>
             s"${moduleNode.absoluteName}_$name"
+            resolveRef(firrtlName(name), expand(name))
           case subfield: WSubField =>
-            expand(subfield.serialize)
+            resolveRef(firrtlName(subfield.serialize), expand(subfield.serialize))
           case subindex: WSubIndex =>
-            expand(subindex.serialize)
+            resolveRef(firrtlName(subindex.serialize), expand(subindex.serialize))
           case ValidIf(condition, value, tpe) =>
             ""
           case DoPrim(op, args, const, tpe) =>
-            ""
+            val primOp = PrimOpNode(op.toString, Some(moduleNode))
+            moduleNode += primOp
+            primOp.asRhs
           case c: UIntLiteral =>
             val uInt = LiteralNode(s"${c.hashCode}", c.value, Some(moduleNode))
             moduleNode += uInt
@@ -99,26 +112,20 @@ object VizualizerPass extends Pass {
       def processPorts(module: DefModule): Unit = {
         def makeName(s: String): String = s"${moduleNode.absoluteName}_$s"
 
-        def showPorts(isInput: Boolean): Unit = {
-          val (dir, subGraphName) = if(isInput) {
-            (firrtl.ir.Input, "io_in")
-          }
-          else {
-            (firrtl.ir.Output, "io_out")
-          }
+        def showPorts(dir: firrtl.ir.Direction): Unit = {
 
-          val ports = module.ports.flatMap {
+          val ports = module.ports.foreach {
             case port if port.direction == dir =>
-              Some(PortNode(port.name, Some(moduleNode)))
+              val portNode = PortNode(port.name, Some(moduleNode))
+              nameToNode(firrtlName(port.name)) = portNode
+              moduleNode += portNode
             case _ => None
           }
-          ports.foreach { port =>
-            moduleNode += port
-          }
+
         }
 
-        showPorts(isInput = true)
-        showPorts(isInput = false)
+        showPorts(firrtl.ir.Input)
+        showPorts(firrtl.ir.Output)
       }
 
       def processStatement(s: Statement): Unit = {
@@ -129,24 +136,36 @@ object VizualizerPass extends Pass {
               processStatement(subStatement)
             }
           case con: Connect =>
-            con.loc match {
-              case WRef(name, _, _, _) =>
-                moduleNode.connect(expand(name), processExpression(con.expr))
-              case (_: WSubField | _: WSubIndex) =>
-                moduleNode.connect(expand(con.loc.serialize), processExpression(con.expr))
+            val (fName, dotName) = con.loc match {
+              case WRef(name, _, _, _) => (firrtlName(name), expand(name))
+              case s: WSubField => (firrtlName(s.serialize), expand(s.serialize))
+              case s: WSubIndex => (firrtlName(s.serialize), expand(s.serialize))
+              case _ => ("badName","badName")
             }
+            val lhsName = nameToNode.get(fName) match {
+              case Some(regNode: RegisterNode) => regNode.in
+              case _ => dotName
+            }
+            moduleNode.connect(lhsName, processExpression(con.expr))
           case WDefInstance(info, instanceName, moduleName, _) =>
             val subModule = findModule(moduleName, c)
-            val newPrefix = if(modulePrefix.isEmpty) instanceName else modulePrefix + "_" + instanceName
+            val newPrefix = if(modulePrefix.isEmpty) instanceName else modulePrefix + "." + instanceName
             val subModuleNode = ModuleNode(instanceName, Some(moduleNode))
             moduleNode += subModuleNode
             // log(s"declaration:WDefInstance:$instanceName:$moduleName prefix now $newPrefix")
             processModule(newPrefix, subModule, subModuleNode)
 
           case DefNode(info, name, expression) =>
-            val expandedName = expand(name)
+            val expandedName = firrtlName(name)
+            val nodeNode = NodeNode(name, Some(moduleNode))
+            nameToNode(expandedName) = nodeNode
+          case DefWire(info, name, expression) =>
+            val expandedName = firrtlName(name)
+            val nodeNode = NodeNode(name, Some(moduleNode))
+            nameToNode(expandedName) = nodeNode
           case reg: DefRegister =>
             val regNode = RegisterNode(reg.name, Some(moduleNode))
+            nameToNode(firrtlName(reg.name)) = regNode
             moduleNode += regNode
           case _ =>
           // let everything else slide
@@ -178,7 +197,7 @@ object VizualizerPass extends Pass {
 
     printFile.close()
 
-    s"dot -Tpng -O ${c.main}.dot".!!
+    s"fdp -Tpng -O ${c.main}.dot".!!
     s"open ${c.main}.dot.png".!!
     c
   }
