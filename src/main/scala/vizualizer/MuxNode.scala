@@ -12,15 +12,15 @@ case class MuxNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
 
   def render: String ={
     s"""
-       |$name [label=<
+       |$name [shape = "plaintext" label=<
        |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
        |  <TR>
-       |    <TD PORT="in1">a</TD>
+       |    <TD PORT="in1">&gt;</TD>
        |    <TD ROWSPAN="2" PORT="select">a?</TD>
-       |    <TD ROWSPAN="2" PORT="out">out</TD>
+       |    <TD ROWSPAN="2" PORT="out">&gt;</TD>
        |  </TR>
        |  <TR>
-       |    <TD PORT="in2">b</TD>
+       |    <TD PORT="in2">&gt;</TD>
        |  </TR>
        |</TABLE>>];
        """.stripMargin

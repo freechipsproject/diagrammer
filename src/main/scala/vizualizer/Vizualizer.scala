@@ -76,7 +76,7 @@ object VizualizerPass extends Pass {
         }
         val result = expression match {
           case mux: firrtl.ir.Mux =>
-            val muxNode = MuxNode(s"mux_${mux.hashCode()}", Some(moduleNode))
+            val muxNode = MuxNode(s"mux_${mux.hashCode().abs}", Some(moduleNode))
             moduleNode += muxNode
             moduleNode.connect(muxNode.select, processExpression(mux.cond))
             moduleNode.connect(muxNode.in1, processExpression(mux.tval))
@@ -159,6 +159,7 @@ object VizualizerPass extends Pass {
             val expandedName = firrtlName(name)
             val nodeNode = NodeNode(name, Some(moduleNode))
             nameToNode(expandedName) = nodeNode
+            moduleNode.connect(expandedName, processExpression(expression))
           case DefWire(info, name, expression) =>
             val expandedName = firrtlName(name)
             val nodeNode = NodeNode(name, Some(moduleNode))
@@ -183,6 +184,8 @@ object VizualizerPass extends Pass {
 
       moduleNode
     }
+
+    println(c.serialize)
 
     c.modules.find(_.name == c.main) match {
       case Some(topModule) =>
