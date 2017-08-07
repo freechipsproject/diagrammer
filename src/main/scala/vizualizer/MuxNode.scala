@@ -15,12 +15,12 @@ case class MuxNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
        |$name [shape = "plaintext" label=<
        |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
        |  <TR>
-       |    <TD PORT="in1">&gt;</TD>
+       |    <TD PORT="in1">&#x25cf;</TD>
        |    <TD ROWSPAN="2" PORT="select">a?</TD>
-       |    <TD ROWSPAN="2" PORT="out">&gt;</TD>
+       |    <TD ROWSPAN="2" PORT="out">&#x25cf;</TD>
        |  </TR>
        |  <TR>
-       |    <TD PORT="in2">&gt;</TD>
+       |    <TD PORT="in2">&#x25cf;</TD>
        |  </TR>
        |</TABLE>>];
        """.stripMargin
@@ -31,6 +31,7 @@ case class MuxNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
 import sys.process._
 
 object MuxNode {
+  //noinspection ScalaStyle
   def main(args: Array[String]): Unit = {
     val fox = LiteralNode("fox", BigInt(1), None)
     val dog = LiteralNode("dog", BigInt(5), None)

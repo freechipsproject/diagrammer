@@ -47,8 +47,7 @@ case class ModuleNode(name: String, parentOpt: Option[DotNode]) extends DotNode 
     connect(destination.absoluteName, sourceName)
   }
 
-  def connect(destination: String, source: String): Unit = {
-    println(s"Connect: dst $destination src $source")
+  def connect(destination: String, source: String, edgeLabel: String = ""): Unit = {
     connections(destination) = source
   }
 
@@ -61,15 +60,15 @@ case class ModuleNode(name: String, parentOpt: Option[DotNode]) extends DotNode 
 
 import sys.process._
 
+//noinspection ScalaStyle
 object ModuleNode {
+  //noinspection ScalaStyle
   def main(args: Array[String]): Unit = {
     val topModule = ModuleNode("top", parentOpt = None)
 
     val fox = LiteralNode("fox", BigInt(1), Some(topModule))
     val dog = LiteralNode("dog", BigInt(5), Some(topModule))
-    val cat = LiteralNode("cat", BigInt(2), Some(topModule))
 
-    val reg1 = RegisterNode("reg1", Some(topModule))
     val mux1 = MuxNode("mux1", Some(topModule))
     val mux2 = MuxNode("mux2", Some(topModule))
 
@@ -94,7 +93,7 @@ object ModuleNode {
 
     val writer = new PrintWriter(new File("module1.dot"))
     writer.println(s"digraph structs {")
-//    writer.println(s"graph [splines=ortho]")
+    writer.println(s"graph [splines=ortho]")
     writer.println(s"node [shape=plaintext]")
     writer.println(topModule.render)
 

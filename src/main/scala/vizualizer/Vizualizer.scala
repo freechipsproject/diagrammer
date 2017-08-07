@@ -6,13 +6,13 @@ import java.io.PrintWriter
 
 import chisel3.experimental.ChiselAnnotation
 import chisel3.internal.InstanceId
+import firrtl.PrimOps._
 import firrtl._
 import firrtl.annotations.{Annotation, Named}
 import firrtl.ir._
 import firrtl.passes.Pass
 
 import scala.collection.mutable
-
 import sys.process._
 
 //scalastyle:off magic.number
@@ -34,12 +34,9 @@ object VizualizerPass extends Pass {
   def run (c:Circuit) : Circuit = {
     val nameToNode: mutable.HashMap[String, DotNode] = new mutable.HashMap()
 
-    var indentLevel = 0
-    def indent: String = " " * indentLevel
-    println(s"We are in ${new java.io.File(".").getAbsolutePath}")
     val printFile = new PrintWriter(new java.io.File(s"${c.main}.dot"))
     def pl(s: String): Unit = {
-      printFile.println(s.split("\n").mkString(indent, s"\n$indent", ""))
+      printFile.println(s.split("\n").mkString("\n"))
     }
 
     /**
@@ -61,10 +58,52 @@ object VizualizerPass extends Pass {
     }
 
     def processModule(modulePrefix: String, myModule: DefModule, moduleNode: ModuleNode): DotNode = {
-      def firrtlName(name: String): String = if(modulePrefix.isEmpty) name else modulePrefix + "." + name
+      def firrtlName(name: String): String = {
+        if(modulePrefix.isEmpty) name else modulePrefix + "." + name
+      }
 
       def expand(name: String): String = {
         s"${moduleNode.absoluteName}_$name".replaceAll("""\.""", "_")
+      }
+
+      def processPrimOp(primOp: DoPrim): String = {
+        primOp.op match {
+          case Eq =>
+            val opNode = BinaryOpNode("eq", Some(moduleNode))
+            moduleNode += opNode
+            moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
+            moduleNode.connect(opNode.in2, processExpression(primOp.args.tail.head))
+            opNode.asRhs
+          case Add =>
+            val opNode = BinaryOpNode("add", Some(moduleNode))
+            moduleNode += opNode
+            moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
+            moduleNode.connect(opNode.in2, processExpression(primOp.args.tail.head))
+            opNode.asRhs
+          case Sub =>
+            val opNode = BinaryOpNode("sub", Some(moduleNode))
+            moduleNode += opNode
+            moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
+            moduleNode.connect(opNode.in2, processExpression(primOp.args.tail.head))
+            opNode.asRhs
+          case AsUInt =>
+            val opNode = UnaryOpNode("asUInt", Some(moduleNode))
+            moduleNode += opNode
+            moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
+            opNode.asRhs
+          case AsSInt =>
+            val opNode = UnaryOpNode("asSInt", Some(moduleNode))
+            moduleNode += opNode
+            moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
+            opNode.asRhs
+          case Tail =>
+            val opNode = OneArgOneParamOpNode("tail", Some(moduleNode), primOp.consts.head)
+            moduleNode += opNode
+            moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
+            opNode.asRhs
+          case _ =>
+            "dummy"
+        }
       }
 
       def processExpression(expression: firrtl.ir.Expression): String = {
@@ -82,19 +121,16 @@ object VizualizerPass extends Pass {
             moduleNode.connect(muxNode.in1, processExpression(mux.tval))
             moduleNode.connect(muxNode.in2, processExpression(mux.fval))
             muxNode.asRhs
-          case WRef(name, tpe, kind, gender) =>
-            s"${moduleNode.absoluteName}_$name"
+          case WRef(name, _, _, _) =>
             resolveRef(firrtlName(name), expand(name))
           case subfield: WSubField =>
             resolveRef(firrtlName(subfield.serialize), expand(subfield.serialize))
           case subindex: WSubIndex =>
             resolveRef(firrtlName(subindex.serialize), expand(subindex.serialize))
-          case ValidIf(condition, value, tpe) =>
+          case ValidIf(_, _, _) =>
             ""
-          case DoPrim(op, args, const, tpe) =>
-            val primOp = PrimOpNode(op.toString, Some(moduleNode))
-            moduleNode += primOp
-            primOp.asRhs
+          case primOp: DoPrim =>
+            processPrimOp(primOp)
           case c: UIntLiteral =>
             val uInt = LiteralNode(s"${c.hashCode}", c.value, Some(moduleNode))
             moduleNode += uInt
@@ -110,11 +146,8 @@ object VizualizerPass extends Pass {
       }
 
       def processPorts(module: DefModule): Unit = {
-        def makeName(s: String): String = s"${moduleNode.absoluteName}_$s"
-
         def showPorts(dir: firrtl.ir.Direction): Unit = {
-
-          val ports = module.ports.foreach {
+          module.ports.foreach {
             case port if port.direction == dir =>
               val portNode = PortNode(port.name, Some(moduleNode))
               nameToNode(firrtlName(port.name)) = portNode
@@ -147,7 +180,7 @@ object VizualizerPass extends Pass {
               case _ => dotName
             }
             moduleNode.connect(lhsName, processExpression(con.expr))
-          case WDefInstance(info, instanceName, moduleName, _) =>
+          case WDefInstance(_, instanceName, moduleName, _) =>
             val subModule = findModule(moduleName, c)
             val newPrefix = if(modulePrefix.isEmpty) instanceName else modulePrefix + "." + instanceName
             val subModuleNode = ModuleNode(instanceName, Some(moduleNode))
@@ -155,15 +188,16 @@ object VizualizerPass extends Pass {
             // log(s"declaration:WDefInstance:$instanceName:$moduleName prefix now $newPrefix")
             processModule(newPrefix, subModule, subModuleNode)
 
-          case DefNode(info, name, expression) =>
-            val expandedName = firrtlName(name)
+          case DefNode(_, name, expression) =>
+            val fName = firrtlName(name)
             val nodeNode = NodeNode(name, Some(moduleNode))
-            nameToNode(expandedName) = nodeNode
-            moduleNode.connect(expandedName, processExpression(expression))
-          case DefWire(info, name, expression) =>
-            val expandedName = firrtlName(name)
+            moduleNode += nodeNode
+            nameToNode(fName) = nodeNode
+            moduleNode.connect(expand(name), processExpression(expression))
+          case DefWire(_, name, _) =>
+            val fName = firrtlName(name)
             val nodeNode = NodeNode(name, Some(moduleNode))
-            nameToNode(expandedName) = nodeNode
+            nameToNode(fName) = nodeNode
           case reg: DefRegister =>
             val regNode = RegisterNode(reg.name, Some(moduleNode))
             nameToNode(firrtlName(reg.name)) = regNode
@@ -178,6 +212,7 @@ object VizualizerPass extends Pass {
           processPorts(myModule)
           processStatement(module.body)
         case extModule: ExtModule =>
+          processPorts(extModule)
         case a =>
           println(s"got a $a")
       }
@@ -200,7 +235,7 @@ object VizualizerPass extends Pass {
 
     printFile.close()
 
-    s"fdp -Tpng -O ${c.main}.dot".!!
+    s"dot -Tpng -O ${c.main}.dot".!!
     s"open ${c.main}.dot.png".!!
     c
   }
