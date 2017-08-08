@@ -3,10 +3,11 @@
 package dotvisualizer
 
 object PrimOpNode {
-  var psuedoHash: Long = 0
+  /* the pseudoHash is necessary because case classes with identical args have identical hashes */
+  var pseudoHash: Long = 0
   def hash: Long = {
-    psuedoHash += 1
-    psuedoHash
+    pseudoHash += 1
+    pseudoHash
   }
 }
 
