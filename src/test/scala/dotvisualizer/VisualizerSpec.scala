@@ -60,18 +60,24 @@ class TopOfVisualizer extends Module with VisualizerAnnotator {
     val in2    = Input(UInt(32.W))
     val select = Input(Bool())
     val out    = Output(UInt(32.W))
+    val memOut = Output(UInt(32.W))
   })
   val x = Reg(UInt(32.W))
   val y = Reg(UInt(32.W))
 
+  val myMem = Mem(16, UInt(32.W))
+
   val modA = Module(new VizModA(64))
 //  val modB = Module(new VizModB(32))
 
+
   when(io.select) {
     x := io.in1
+    myMem(io.in1) := io.in2
   }
   .otherwise {
     x := io.in2
+    io.memOut := myMem(io.in1)
   }
 
   modA.io.in := x

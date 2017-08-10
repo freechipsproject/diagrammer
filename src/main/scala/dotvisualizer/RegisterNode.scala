@@ -9,12 +9,12 @@ case class RegisterNode(name: String, parentOpt: Option[DotNode]) extends DotNod
 
   def render: String = {
     s"""struct_$absoluteName [shape="plaintext" label=<
-      |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
-      |  <TR>
-      |    <TD PORT="in"> </TD>
-      |     <TD>$name</TD>
-      |    <TD PORT="out"> </TD>
-      |  </TR>
-      |</TABLE>>];""".stripMargin
+       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+       |  <TR>
+       |    <TD PORT="in"> </TD>
+       |    <TD>$name</TD>
+       |    <TD PORT="out"> </TD>
+       |  </TR>
+       |</TABLE>>];""".stripMargin
   }
 }

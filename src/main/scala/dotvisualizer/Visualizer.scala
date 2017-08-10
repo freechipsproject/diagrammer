@@ -146,7 +146,8 @@ class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
       def processExpression(expression: firrtl.ir.Expression): String = {
         def resolveRef(firrtlName: String, dotName: String): String = {
           nameToNode.get(firrtlName) match {
-            case Some(node) => node.asRhs
+            case Some(node) =>
+              node.asRhs
             case _ => dotName
           }
         }
@@ -164,8 +165,12 @@ class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
             resolveRef(firrtlName(subfield.serialize), expand(subfield.serialize))
           case subindex: WSubIndex =>
             resolveRef(firrtlName(subindex.serialize), expand(subindex.serialize))
-          case ValidIf(_, _, _) =>
-            ""
+          case validIf : ValidIf =>
+            val validIfNode = ValidIfNode(s"validif_${validIf.hashCode().abs}", Some(moduleNode))
+            moduleNode += validIfNode
+            moduleNode.connect(validIfNode.select, processExpression(validIf.cond))
+            moduleNode.connect(validIfNode.in1, processExpression(validIf.value))
+            validIfNode.asRhs
           case primOp: DoPrim =>
             processPrimOp(primOp)
           case c: UIntLiteral =>
@@ -198,6 +203,14 @@ class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
         showPorts(firrtl.ir.Output)
       }
 
+      def processMemory(memory: DefMemory): Unit = {
+        val fname = firrtlName(memory.name)
+        val dotName = expand(memory.name)
+
+        val memNode = MemNode(memory.name, Some(moduleNode), fname, memory, nameToNode)
+        moduleNode += memNode
+      }
+
       def processStatement(s: Statement): Unit = {
         s match {
           case block: Block =>
@@ -208,12 +221,14 @@ class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
           case con: Connect =>
             val (fName, dotName) = con.loc match {
               case WRef(name, _, _, _) => (firrtlName(name), expand(name))
-              case s: WSubField => (firrtlName(s.serialize), expand(s.serialize))
+              case s: WSubField =>
+                (firrtlName(s.serialize), expand(s.serialize))
               case s: WSubIndex => (firrtlName(s.serialize), expand(s.serialize))
               case _ => ("badName","badName")
             }
             val lhsName = nameToNode.get(fName) match {
               case Some(regNode: RegisterNode) => regNode.in
+              case Some(memPort: MemoryPort) => memPort.absoluteName
               case _ => dotName
             }
             moduleNode.connect(lhsName, processExpression(con.expr))
@@ -222,7 +237,6 @@ class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
             val newPrefix = if(modulePrefix.isEmpty) instanceName else modulePrefix + "." + instanceName
             val subModuleNode = ModuleNode(instanceName, Some(moduleNode))
             moduleNode += subModuleNode
-            // log(s"declaration:WDefInstance:$instanceName:$moduleName prefix now $newPrefix")
             processModule(newPrefix, subModule, subModuleNode)
 
           case DefNode(_, name, expression) =>
@@ -239,6 +253,8 @@ class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
             val regNode = RegisterNode(reg.name, Some(moduleNode))
             nameToNode(firrtlName(reg.name)) = regNode
             moduleNode += regNode
+          case memory: DefMemory =>
+            processMemory(memory)
           case _ =>
           // let everything else slide
         }
