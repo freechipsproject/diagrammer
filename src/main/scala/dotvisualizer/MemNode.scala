@@ -41,13 +41,13 @@ case class MemNode(name: String, parentOpt: Option[DotNode],
 
 
   defMem.readers.foreach { readerName =>
-    addMemoryPort("read port", readerName, Seq("en", "addr", "data"))
+    addMemoryPort("read port", readerName, Seq("en", "addr", "data", "clk"))
   }
-  defMem.readers.foreach { readerName =>
-    addMemoryPort("write port", readerName, Seq("en", "addr", "data", "mask"))
+  defMem.writers.foreach { readerName =>
+    addMemoryPort("write port", readerName, Seq("en", "addr", "data", "mask", "clk"))
   }
-  defMem.readers.foreach { readerName =>
-    addMemoryPort("write port", readerName, Seq("en", "addr", "wdata", "wmask", "wmode"))
+  defMem.readwriters.foreach { readerName =>
+    addMemoryPort("write port", readerName, Seq("en", "addr", "wdata", "wmask", "wmode", "clk"))
   }
 
   text.append(

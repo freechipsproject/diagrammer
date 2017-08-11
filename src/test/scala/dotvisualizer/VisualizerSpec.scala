@@ -24,9 +24,7 @@ class VizModC(widthC: Int) extends Module with VisualizerAnnotator {
   })
   io.out := io.in
 
-  visualize(this, s"VizModC($widthC)")
-
-  visualize(io.out, s"VizModC(ignore param)")
+  visualize(this, s"depth=2")
 }
 
 /**
@@ -42,6 +40,8 @@ class VizModA(annoParam: Int) extends Module with VisualizerAnnotator {
   val modC = Module(new VizModC(16))
   modC.io.in := io.in
   io.out := modC.io.out
+
+    visualize(this, s"depth=3")
 }
 
 class VizModB(widthB: Int) extends Module with VisualizerAnnotator{
@@ -69,6 +69,7 @@ class TopOfVisualizer extends Module with VisualizerAnnotator {
 
   val modA = Module(new VizModA(64))
 //  val modB = Module(new VizModB(32))
+
 
 
   when(io.select) {

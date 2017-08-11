@@ -5,20 +5,26 @@ package dotvisualizer
 import java.io.PrintWriter
 
 import chisel3.experimental.ChiselAnnotation
-import chisel3.internal.InstanceId
 import firrtl.PrimOps._
 import firrtl._
-import firrtl.annotations.{Annotation, Named}
+import firrtl.annotations.{Annotation, ModuleName, Named}
 import firrtl.ir._
 import firrtl.passes.Pass
 
 import scala.collection.mutable
 import sys.process._
 
+//TODO: Chick: Allow specifying where to write dot file
+//TODO: Chick: Allow way to specify renderer dot and fdp have been tested
+//TODO: Chick: Allow way to specify a render depth, i.e. only render so many levels of sub modules beneath start module
+//TODO: Chick: Allow way to suppress or minimize display of intermediate _T nodes
+//TODO: Chick: Consider mergining constants in to muxes and primops, rather than wiring in a node.
+//TODO: Chick: Must be more than above
+
 //scalastyle:off magic.number
 /**
-  * This and the Visualizer transform class are a highly schematic implementation of a
-  * library implementation of   (i.e. code outside of firrtl itself)
+  * This library implements a graphviz dot file render.  The annotation can specify at what module to
+  * start the rendering process.  value will eventually be modified to allow some options in rendering
   */
 object VisualizerAnnotation {
   def apply(target: Named, value: String): Annotation = Annotation(target, classOf[VisualizerTransform], value)
@@ -29,8 +35,27 @@ object VisualizerAnnotation {
   }
 }
 
+/**
+  * Add this trait to a module to allow user to specify that the module or a submodule should be
+  * rendered
+  */
+trait VisualizerAnnotator {
+  self: chisel3.Module =>
+  def visualize(component: chisel3.Module, value: String): Unit = {
+    annotate(ChiselAnnotation(component, classOf[VisualizerTransform], value))
+  }
+}
+
+/**
+  * Annotations specify where to start rendering.  Currently the first encountered module that matches an annotation
+  * will start the rendering, rendering continues through all submodules.  It would be nice to allow a depth
+  * specification. This pass is intermixed with other low to low transforms, it is not treated as a separate
+  * emit, so if so annotated it will run with every firrtl compilation.
+  *
+  * @param annotations  where to start rendering
+  */
 //noinspection ScalaStyle
-class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
+class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
   def run (c:Circuit) : Circuit = {
     val nameToNode: mutable.HashMap[String, DotNode] = new mutable.HashMap()
 
@@ -57,8 +82,27 @@ class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
       }
     }
 
+    var isInScope = false
+
+    /**
+      * If rendering started, construct a graph inside moduleNode
+      * @param modulePrefix the path to this node
+      * @param myModule     the firrtl module currently being parsed
+      * @param moduleNode   a node renderable to dot notation constructed from myModule
+      * @return
+      */
     def processModule(modulePrefix: String, myModule: DefModule, moduleNode: ModuleNode): DotNode = {
-      def firrtlName(name: String): String = {
+      /**
+        * Half the battle here is matching references between firrtl full name for an element and
+        * dot's reference to a connectable module
+        * Following functions compute the two kinds of name
+        */
+
+      /** get firrtl's version, usually has dot's as separators
+        * @param name components name
+        * @return
+        */
+      def getFirrtlName(name: String): String = {
         if(modulePrefix.isEmpty) name else modulePrefix + "." + name
       }
 
@@ -160,11 +204,11 @@ class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
             moduleNode.connect(muxNode.in2, processExpression(mux.fval))
             muxNode.asRhs
           case WRef(name, _, _, _) =>
-            resolveRef(firrtlName(name), expand(name))
+            resolveRef(getFirrtlName(name), expand(name))
           case subfield: WSubField =>
-            resolveRef(firrtlName(subfield.serialize), expand(subfield.serialize))
+            resolveRef(getFirrtlName(subfield.serialize), expand(subfield.serialize))
           case subindex: WSubIndex =>
-            resolveRef(firrtlName(subindex.serialize), expand(subindex.serialize))
+            resolveRef(getFirrtlName(subindex.serialize), expand(subindex.serialize))
           case validIf : ValidIf =>
             val validIfNode = ValidIfNode(s"validif_${validIf.hashCode().abs}", Some(moduleNode))
             moduleNode += validIfNode
@@ -192,21 +236,21 @@ class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
           module.ports.foreach {
             case port if port.direction == dir =>
               val portNode = PortNode(port.name, Some(moduleNode))
-              nameToNode(firrtlName(port.name)) = portNode
+              nameToNode(getFirrtlName(port.name)) = portNode
               moduleNode += portNode
             case _ => None
           }
 
         }
 
-        showPorts(firrtl.ir.Input)
-        showPorts(firrtl.ir.Output)
+        if(isInScope) {
+          showPorts(firrtl.ir.Input)
+          showPorts(firrtl.ir.Output)
+        }
       }
 
       def processMemory(memory: DefMemory): Unit = {
-        val fname = firrtlName(memory.name)
-        val dotName = expand(memory.name)
-
+        val fname = getFirrtlName(memory.name)
         val memNode = MemNode(memory.name, Some(moduleNode), fname, memory, nameToNode)
         moduleNode += memNode
       }
@@ -215,15 +259,14 @@ class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
         s match {
           case block: Block =>
             block.stmts.foreach { subStatement =>
-              println(s"processing substatement $subStatement")
               processStatement(subStatement)
             }
-          case con: Connect =>
+          case con: Connect if isInScope =>
             val (fName, dotName) = con.loc match {
-              case WRef(name, _, _, _) => (firrtlName(name), expand(name))
+              case WRef(name, _, _, _) => (getFirrtlName(name), expand(name))
               case s: WSubField =>
-                (firrtlName(s.serialize), expand(s.serialize))
-              case s: WSubIndex => (firrtlName(s.serialize), expand(s.serialize))
+                (getFirrtlName(s.serialize), expand(s.serialize))
+              case s: WSubIndex => (getFirrtlName(s.serialize), expand(s.serialize))
               case _ => ("badName","badName")
             }
             val lhsName = nameToNode.get(fName) match {
@@ -239,26 +282,43 @@ class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
             moduleNode += subModuleNode
             processModule(newPrefix, subModule, subModuleNode)
 
-          case DefNode(_, name, expression) =>
-            val fName = firrtlName(name)
+          case DefNode(_, name, expression) if isInScope =>
+            val fName = getFirrtlName(name)
             val nodeNode = NodeNode(name, Some(moduleNode))
             moduleNode += nodeNode
             nameToNode(fName) = nodeNode
             moduleNode.connect(expand(name), processExpression(expression))
-          case DefWire(_, name, _) =>
-            val fName = firrtlName(name)
+          case DefWire(_, name, _) if isInScope =>
+            val fName = getFirrtlName(name)
             val nodeNode = NodeNode(name, Some(moduleNode))
             nameToNode(fName) = nodeNode
-          case reg: DefRegister =>
+          case reg: DefRegister if isInScope =>
             val regNode = RegisterNode(reg.name, Some(moduleNode))
-            nameToNode(firrtlName(reg.name)) = regNode
+            nameToNode(getFirrtlName(reg.name)) = regNode
             moduleNode += regNode
-          case memory: DefMemory =>
+          case memory: DefMemory if isInScope =>
             processMemory(memory)
           case _ =>
           // let everything else slide
         }
       }
+
+      def checkScope(): Unit = {
+        val found = annotations.exists { annotation =>
+          annotation.target match {
+            case ModuleName(moduleName, _) =>
+              moduleName == myModule.name
+            case _ =>
+              false
+          }
+        }
+        if(found) {
+          isInScope = true
+        }
+      }
+
+      val saveScope = isInScope
+      checkScope()
 
       myModule match {
         case module: firrtl.ir.Module =>
@@ -269,12 +329,13 @@ class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
         case a =>
           println(s"got a $a")
       }
+      isInScope = saveScope
 
       moduleNode
     }
 
-    c.modules.find(_.name == c.main) match {
-      case Some(topModule) =>
+    findModule(c.main, c) match {
+      case topModule: DefModule =>
         pl(s"digraph ${topModule.name} {")
 //        pl(s"graph [splines=ortho];")
         val topModuleNode = ModuleNode(c.main, parentOpt = None)
@@ -287,6 +348,7 @@ class VisualizerPass(annotations: Seq[Annotation]) extends Pass {
 
     printFile.close()
 
+    //TODO: Chick this makes the dot file pop up on OS X, not sure what happens elsewhere
     s"dot -Tpng -O ${c.main}.dot".!!
     s"open ${c.main}.dot.png".!!
     c
@@ -305,12 +367,5 @@ class VisualizerTransform extends Transform {
         new VisualizerPass(myAnnotations).run(state.circuit)
         state
     }
-  }
-}
-
-trait VisualizerAnnotator {
-  self: chisel3.Module =>
-  def visualize(component: InstanceId, value: String): Unit = {
-    annotate(ChiselAnnotation(component, classOf[VisualizerTransform], value))
   }
 }
