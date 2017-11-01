@@ -24,7 +24,7 @@ class VizModC(widthC: Int) extends Module with VisualizerAnnotator {
   })
   io.out := io.in
 
-  visualize(this, s"depth=2")
+  visualize(this, depth = 2)
 }
 
 /**
@@ -41,7 +41,7 @@ class VizModA(annoParam: Int) extends Module with VisualizerAnnotator {
   modC.io.in := io.in
   io.out := modC.io.out
 
-    visualize(this, s"depth=3")
+    visualize(this, depth = 3)
 }
 
 class VizModB(widthB: Int) extends Module with VisualizerAnnotator{
@@ -86,7 +86,7 @@ class TopOfVisualizer extends Module with VisualizerAnnotator {
   y := modA.io.out + io.in2
   io.out := y
 
-  visualize(this, s"TopOfVisualizer\nWith\nSome new lines")
+  visualize(this)
 }
 
 class VisualizerTester extends BasicTester {

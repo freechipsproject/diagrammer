@@ -24,7 +24,7 @@ class GCD extends Module with VisualizerAnnotator {
   io.z := x
   io.v := y === 0.U
 
-  visualize(this, "render this")
+  visualize(this)
 }
 
 // See LICENSE for license details.
@@ -76,13 +76,10 @@ class GCDUnitTester(c: GCD) extends PeekPokeTester(c) {
 }
 
 class GCDTester extends ChiselFlatSpec {
-  private val backendNames = Array[String]("firrtl")
-  for ( backendName <- backendNames ) {
-    "GCD" should s"calculate proper greatest common denominator (with $backendName)" in {
-      Driver(() => new GCD, backendName) {
-        c => new GCDUnitTester(c)
-      } should be (true)
-    }
+  "GCD" should s"is used here to demonstrate dot visualization" in {
+    iotesters.Driver.execute(Array.empty, () => new GCD) {
+      c => new GCDUnitTester(c)
+    } should be (true)
   }
 }
 
