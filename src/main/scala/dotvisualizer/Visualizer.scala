@@ -15,30 +15,55 @@ import scala.collection.mutable
 import sys.process._
 
 //TODO: Chick: Allow specifying where to write dot file
-//TODO: Chick: Allow way to specify renderer dot and fdp have been tested
-//TODO: Chick: Allow way to specify a render depth, i.e. only render so many levels of sub modules beneath start module
 //TODO: Chick: Allow way to suppress or minimize display of intermediate _T nodes
-//TODO: Chick: Consider mergining constants in to muxes and primops, rather than wiring in a node.
-//TODO: Chick: Must be more than above
+//TODO: Chick: Consider merging constants in to muxes and primops, rather than wiring in a node.
 
 //scalastyle:off magic.number
 /**
   * This library implements a graphviz dot file render.  The annotation can specify at what module to
   * start the rendering process.  value will eventually be modified to allow some options in rendering
   */
+
+/**
+  * Tools for creating annotations for direct processing of a firrtl input file.
+  */
 object VisualizerAnnotation {
-  def apply(target: Named, depth: Int = 0): Annotation = {
+  /**
+    * Use this to create an firrtl annotation,
+    * @param target  The module to start rendering
+    * @param depth   Stop rendering after this many sub-modules have been descended. 0 just does IOs of target
+    *                1 does all components of current target, plus IOs of submodules referenced,
+    *                and so forth.
+    * @return
+    */
+  def apply(target: Named, depth: Int = -1): Annotation = {
     Annotation(target, classOf[VisualizerTransform], s"${Visualizer.DepthString}=$depth")
   }
+
+  /**
+    * Use this to set the program to convert the dot file to a png.  dot and fdp seem to work well, others
+    * might too.  Default is dot
+    * @param program program to create png
+    * @return
+    */
   def setDotProgram(program: String): Annotation = {
     Annotation(CircuitTopName, classOf[VisualizerTransform], s"${Visualizer.DotProgramString}=$program")
   }
+
+  /**
+    * Use this control what program will be called with the png file as its command line argument.
+    * On OS-X open will launch the default viewer (usually preview)
+    * Set program to none to turn off this feature
+    * @param program program to open png
+    * @return
+    */
   def setOpenProgram(program: String): Annotation = {
     Annotation(CircuitTopName, classOf[VisualizerTransform], s"${Visualizer.OpenProgramString}=$program")
   }
 
   def unapply(a: Annotation): Option[(Named, String)] = a match {
-    case Annotation(named, t, value) if t == classOf[VisualizerTransform] => Some((named, value))
+    case Annotation(named, t, value) if t == classOf[VisualizerTransform] =>
+      Some((named, value))
     case _ => None
   }
 }
@@ -49,12 +74,34 @@ object VisualizerAnnotation {
   */
 trait VisualizerAnnotator {
   self: chisel3.Module =>
+
+  /**
+    * Use this to create an firrtl annotation,
+    * @param component  The module to start rendering
+    * @param depth      Stop rendering after this many sub-modules have been descended. 0 just does IOs of target
+    *                   1 does all components of current target, plus IOs of submodules referenced,
+    *                   and so forth.
+    * @return
+    */
   def visualize(component: chisel3.Module, depth: Int = 0): Unit = {
     annotate(ChiselAnnotation(component, classOf[VisualizerTransform], s"${Visualizer.DepthString}=$depth"))
   }
+  /**
+    * Use this to set the program to convert the dot file to a png.  dot and fdp seem to work well, others
+    * might too.  Default is dot
+    * @param program program to create png
+    * @return
+    */
   def setDotProgram(program: String): Unit = {
     annotate(ChiselAnnotation(self, classOf[VisualizerTransform], s"${Visualizer.DotProgramString}=$program"))
   }
+  /**
+    * Use this control what program will be called with the png file as its command line argument.
+    * On OS-X open will launch the default viewer (usually preview)
+    * Set program to none to turn off this feature
+    * @param program program to open png
+    * @return
+    */
   def setOpenProgram(program: String): Unit = {
     annotate(ChiselAnnotation(self, classOf[VisualizerTransform], s"${Visualizer.OpenProgramString}=$program"))
   }
@@ -62,8 +109,8 @@ trait VisualizerAnnotator {
 
 /**
   * Annotations specify where to start rendering.  Currently the first encountered module that matches an annotation
-  * will start the rendering, rendering continues through all submodules.  It would be nice to allow a depth
-  * specification. This pass is intermixed with other low to low transforms, it is not treated as a separate
+  * will start the rendering, rendering continues per the depth specified in the annotation.
+  * This pass is intermixed with other low to low transforms, it is not treated as a separate
   * emit, so if so annotated it will run with every firrtl compilation.
   *
   * @param annotations  where to start rendering
@@ -96,8 +143,6 @@ class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
       }
     }
 
-    var isInScope = false
-
     /**
       * If rendering started, construct a graph inside moduleNode
       * @param modulePrefix the path to this node
@@ -105,10 +150,15 @@ class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
       * @param moduleNode   a node renderable to dot notation constructed from myModule
       * @return
       */
-    def processModule(modulePrefix: String, myModule: DefModule, moduleNode: ModuleNode): DotNode = {
+    def processModule(
+                       modulePrefix: String,
+                       myModule: DefModule,
+                       moduleNode: ModuleNode,
+                       scope: Scope = Scope()
+                     ): DotNode = {
       /**
         * Half the battle here is matching references between firrtl full name for an element and
-        * dot's reference to a connectable module
+        * dot's reference to a connect-able module
         * Following functions compute the two kinds of name
         */
 
@@ -261,15 +311,15 @@ class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
 
         }
 
-        if(isInScope) {
+        if(scope.doPorts) {
           showPorts(firrtl.ir.Input)
           showPorts(firrtl.ir.Output)
         }
       }
 
       def processMemory(memory: DefMemory): Unit = {
-        val fname = getFirrtlName(memory.name)
-        val memNode = MemNode(memory.name, Some(moduleNode), fname, memory, nameToNode)
+        val fName = getFirrtlName(memory.name)
+        val memNode = MemNode(memory.name, Some(moduleNode), fName, memory, nameToNode)
         moduleNode += memNode
       }
 
@@ -279,7 +329,7 @@ class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
             block.stmts.foreach { subStatement =>
               processStatement(subStatement)
             }
-          case con: Connect if isInScope =>
+          case con: Connect if scope.doComponents =>
             val (fName, dotName) = con.loc match {
               case WRef(name, _, _, _) => (getFirrtlName(name), expand(name))
               case Reference(name, _) => (getFirrtlName(name), expand(name))
@@ -298,52 +348,37 @@ class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
               case _ => dotName
             }
             moduleNode.connect(lhsName, processExpression(con.expr))
+
           case WDefInstance(_, instanceName, moduleName, _) =>
             val subModule = findModule(moduleName, c)
             val newPrefix = if(modulePrefix.isEmpty) instanceName else modulePrefix + "." + instanceName
             val subModuleNode = ModuleNode(instanceName, Some(moduleNode))
             moduleNode += subModuleNode
-            processModule(newPrefix, subModule, subModuleNode)
 
-          case DefNode(_, name, expression) if isInScope =>
+            processModule(newPrefix, subModule, subModuleNode, getScope(moduleName, scope))
+
+          case DefNode(_, name, expression) if scope.doComponents =>
             val fName = getFirrtlName(name)
             val nodeNode = NodeNode(name, Some(moduleNode))
             moduleNode += nodeNode
             nameToNode(fName) = nodeNode
             moduleNode.connect(expand(name), processExpression(expression))
-          case DefWire(_, name, _) if isInScope =>
+          case DefWire(_, name, _) if scope.doComponents =>
             val fName = getFirrtlName(name)
             val nodeNode = NodeNode(name, Some(moduleNode))
             nameToNode(fName) = nodeNode
-          case reg: DefRegister if isInScope =>
+          case reg: DefRegister if scope.doComponents =>
             val regNode = RegisterNode(reg.name, Some(moduleNode))
             nameToNode(getFirrtlName(reg.name)) = regNode
             moduleNode += regNode
-          case memory: DefMemory if isInScope =>
+          case memory: DefMemory if scope.doComponents =>
             processMemory(memory)
           case _ =>
           // let everything else slide
         }
       }
 
-      def checkScope(): Unit = {
-        val found = annotations.exists { annotation =>
-          annotation.target match {
-            case ModuleName(moduleName, _) =>
-              moduleName == myModule.name
-            case CircuitTopName =>
-              true
-            case _ =>
-              false
-          }
-        }
-        if(found) {
-          isInScope = true
-        }
-      }
-
-      val saveScope = isInScope
-      checkScope()
+      // println(s"Scope is $scope")
 
       myModule match {
         case module: firrtl.ir.Module =>
@@ -354,9 +389,28 @@ class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
         case a =>
           println(s"got a $a")
       }
-      isInScope = saveScope
 
       moduleNode
+    }
+
+    def getScope(moduleName: String, currentScope: Scope = Scope()): Scope = {
+      val applicableAnnotation = annotations.find { annotation =>
+        annotation.target match {
+          case ModuleName(annotationModuleName, _) =>
+            annotationModuleName == moduleName
+          case CircuitTopName =>
+            currentScope.maxDepth >= 0
+          case _ =>
+            false
+        }
+      }
+      applicableAnnotation match {
+        case Some(VisualizerAnnotation(_, maxDepthString)) =>
+          val maxDepth = maxDepthString.split("=", 2).last.trim.toInt
+          Scope(0, maxDepth)
+        case _ =>
+          currentScope.descend
+      }
     }
 
     findModule(c.main, c) match {
@@ -364,7 +418,7 @@ class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
         pl(s"digraph ${topModule.name} {")
 //        pl(s"graph [splines=ortho];")
         val topModuleNode = ModuleNode(c.main, parentOpt = None)
-        processModule("", topModule, topModuleNode)
+        processModule("", topModule, topModuleNode, getScope(topModule.name))
         pl(topModuleNode.render)
         pl("}")
       case _ =>
@@ -373,11 +427,6 @@ class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
 
     printFile.close()
 
-//    //TODO (Chick) this makes the dot file pop up on OS X, not sure what happens elsewhere
-////    s"dot -Tpng -O ${c.main}.dot".!!
-//    s"fdp -Tpng -O ${c.main}.dot".!!
-//    s"open ${c.main}.dot.png".!!
-//
     c
   }
 }

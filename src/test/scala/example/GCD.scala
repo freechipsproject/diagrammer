@@ -1,5 +1,3 @@
-// See LICENSE for license details.
-
 package example
 
 import chisel3._
@@ -25,11 +23,12 @@ class GCD extends Module with VisualizerAnnotator {
   io.v := y === 0.U
 
   visualize(this)
+  setDotProgram("fdp")
 }
 
 // See LICENSE for license details.
 
-import chisel3.iotesters.{ChiselFlatSpec, Driver, PeekPokeTester}
+import chisel3.iotesters.{ChiselFlatSpec, PeekPokeTester}
 
 class GCDUnitTester(c: GCD) extends PeekPokeTester(c) {
   /**

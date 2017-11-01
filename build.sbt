@@ -1,4 +1,4 @@
-name := "chisel-module-template"
+name := "chisel-dot-visualizer"
 
 version := "1.0"
 

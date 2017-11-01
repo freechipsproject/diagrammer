@@ -13,6 +13,9 @@ import org.scalatest._
   *
   * This is currently not much of a test, read the printout to see what annotations look like
   */
+
+//scalastyle:off magic.number
+
 /**
   * This class has parameterizable widths, it will generate different hardware
   * @param widthC io width
@@ -24,7 +27,7 @@ class VizModC(widthC: Int) extends Module with VisualizerAnnotator {
   })
   io.out := io.in
 
-  visualize(this, depth = 2)
+  // visualize(this, depth = 2)
 }
 
 /**
@@ -67,6 +70,8 @@ class TopOfVisualizer extends Module with VisualizerAnnotator {
 
   val myMem = Mem(16, UInt(32.W))
 
+  io.memOut := DontCare
+
   val modA = Module(new VizModA(64))
 //  val modB = Module(new VizModB(32))
 
@@ -86,7 +91,10 @@ class TopOfVisualizer extends Module with VisualizerAnnotator {
   y := modA.io.out + io.in2
   io.out := y
 
-  visualize(this)
+  /**
+    * Play with the depth over the range 0 to 3, to see how it affects rendering
+    */
+  visualize(this, depth = 3)
 }
 
 class VisualizerTester extends BasicTester {
@@ -111,7 +119,7 @@ class AnnotatingVisualizerSpec extends FreeSpec with Matchers {
       |that happens only after emit has been called on circuit""".stripMargin in {
 
       Driver.execute(Array("--target-dir", "test_run_dir", "--compiler", "low"), () => new TopOfVisualizer) match {
-        case ChiselExecutionSuccess(Some(circuit), emitted, _) =>
+        case ChiselExecutionSuccess(Some(_), emitted, _) =>
           println(s"done!")
         case _ =>
           throw new Exception("bad parse")
