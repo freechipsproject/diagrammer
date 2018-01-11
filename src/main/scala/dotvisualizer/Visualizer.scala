@@ -485,7 +485,7 @@ object Visualizer {
   val DotProgramString  = "DotProgram"
   val OpenProgramString = "OpenProgram"
 
-  def run(fileName : String, dotProgram : String = "dot", openProgram: String = "open"): Unit = {
+  def run(fileName : String, dotProgram : String = "fdp", openProgram: String = "open"): Unit = {
     val sourceFirttl = io.Source.fromFile(fileName).getLines().mkString("\n")
 
     val ast = Parser.parse(sourceFirttl)

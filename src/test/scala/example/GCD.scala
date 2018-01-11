@@ -1,6 +1,9 @@
+// See LICENSE for license details.
+
 package example
 
 import chisel3._
+import chisel3.iotesters.{ChiselFlatSpec, PeekPokeTester}
 import dotvisualizer.VisualizerAnnotator
 
 class GCD extends Module with VisualizerAnnotator {
@@ -22,13 +25,9 @@ class GCD extends Module with VisualizerAnnotator {
   io.z := x
   io.v := y === 0.U
 
-  visualize(this)
-  setDotProgram("fdp")
+  visualize(this, depth = 2)
+  setDotProgram("dot")
 }
-
-// See LICENSE for license details.
-
-import chisel3.iotesters.{ChiselFlatSpec, PeekPokeTester}
 
 class GCDUnitTester(c: GCD) extends PeekPokeTester(c) {
   /**
@@ -70,6 +69,7 @@ class GCDUnitTester(c: GCD) extends PeekPokeTester(c) {
       step(steps - 1) // -1 is because we step(1) already to toggle the enable
       expect(gcd.io.z, expected_gcd)
       expect(gcd.io.v, 1)
+
     }
   }
 }

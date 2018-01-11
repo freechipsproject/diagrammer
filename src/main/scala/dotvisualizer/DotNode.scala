@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 package dotvisualizer
 
 import scala.collection.mutable.ArrayBuffer

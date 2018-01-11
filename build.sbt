@@ -1,6 +1,8 @@
 name := "chisel-dot-visualizer"
 
-version := "1.0"
+organization := "edu.berkeley.cs"
+
+version := "0.1-SNAPSHOT"
 
 scalaVersion := "2.11.7"
 
