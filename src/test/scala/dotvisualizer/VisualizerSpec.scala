@@ -3,8 +3,7 @@
 package dotvisualizer
 
 import chisel3._
-import chisel3.testers.BasicTester
-import firrtl.annotations.Annotation
+import chisel3.iotesters.PeekPokeTester
 import org.scalatest._
 
 /** Circuit Top instantiates A and B and both A and B instantiate C
@@ -97,16 +96,13 @@ class TopOfVisualizer extends Module with VisualizerAnnotator {
   visualize(this, depth = 3)
 }
 
-class VisualizerTester extends BasicTester {
-  val dut = Module(new TopOfVisualizer)
-
-  stop()
+class VisualizerTester(c: TopOfVisualizer) extends PeekPokeTester(c) {
 }
 
 class AnnotatingVisualizerSpec extends FreeSpec with Matchers {
-  def findAnno(as: Seq[Annotation], name: String): Option[Annotation] = {
-    as.find { a => a.targetString == name }
-  }
+//  def findAnno(as: Seq[Annotation], name: String): Option[Annotation] = {
+//    as.find { a => a.targetString == name }
+//  }
 
   """
     |Visualizer is an example of a module that has two sub-modules A and B who both instantiate their
@@ -118,11 +114,8 @@ class AnnotatingVisualizerSpec extends FreeSpec with Matchers {
       |annotations are not resolved at after circuit elaboration,
       |that happens only after emit has been called on circuit""".stripMargin in {
 
-      Driver.execute(Array("--target-dir", "test_run_dir", "--compiler", "low"), () => new TopOfVisualizer) match {
-        case ChiselExecutionSuccess(Some(_), emitted, _) =>
-          println(s"done!")
-        case _ =>
-          throw new Exception("bad parse")
+      iotesters.Driver.execute(Array("--compiler", "low"), () => new TopOfVisualizer) { c =>
+        new VisualizerTester(c)
       }
     }
   }

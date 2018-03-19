@@ -59,7 +59,7 @@ case class MemNode(name: String, parentOpt: Option[DotNode],
 }
 
 case class MemoryPort(name: String, override val absoluteName: String, memPortName: String) extends DotNode {
-  val parentOpt = None // doesn't need to know parent
+  val parentOpt : Option[DotNode] = None // doesn't need to know parent
   def render: String = {
     s"""
       |<TR><TD PORT="${memPortName}_$name">$name</TD></TR>

@@ -3,8 +3,7 @@
 package example
 
 import chisel3._
-import dotvisualizer.{TopOfVisualizer, VisualizerAnnotator}
-import firrtl.annotations.Annotation
+import dotvisualizer.VisualizerAnnotator
 import org.scalatest.{FreeSpec, Matchers}
 
 class MyManyDynamicElementVecFir(length: Int) extends Module with VisualizerAnnotator {
@@ -26,9 +25,9 @@ class MyManyDynamicElementVecFir(length: Int) extends Module with VisualizerAnno
 
 
 class FirExampleSpec extends FreeSpec with Matchers {
-  def findAnno(as: Seq[Annotation], name: String): Option[Annotation] = {
-    as.find { a => a.targetString == name }
-  }
+//  def findAnno(as: Seq[Annotation], name: String): Option[Annotation] = {
+//    as.find { a => a.targetString == name }
+//  }
 
   """
     |Visualizer is an example of a module that has two sub-modules A and B who both instantiate their
@@ -40,8 +39,11 @@ class FirExampleSpec extends FreeSpec with Matchers {
       |annotations are not resolved at after circuit elaboration,
       |that happens only after emit has been called on circuit""".stripMargin in {
 
-      Driver.execute(Array("--target-dir", "test_run_dir", "--compiler", "low"), () => new MyManyDynamicElementVecFir(10)) match {
-        case ChiselExecutionSuccess(Some(_), emitted, _) =>
+      Driver.execute(
+        Array("--target-dir", "test_run_dir", "--compiler", "low"),
+        () => new MyManyDynamicElementVecFir(10)
+      ) match {
+        case ChiselExecutionSuccess(Some(_), _, _) =>
           println(s"done!")
         case _ =>
           throw new Exception("bad parse")

@@ -4,7 +4,9 @@ package dotvisualizer
 
 import java.io.PrintWriter
 
-import chisel3.experimental.ChiselAnnotation
+import chisel3.experimental
+import chisel3.experimental.{ChiselAnnotation, RunFirrtlTransform}
+import chisel3.internal.InstanceId
 import firrtl.PrimOps._
 import firrtl._
 import firrtl.annotations._
@@ -36,8 +38,8 @@ object VisualizerAnnotation {
     *                and so forth.
     * @return
     */
-  def apply(target: Named, depth: Int = -1): Annotation = {
-    Annotation(target, classOf[VisualizerTransform], s"${Visualizer.DepthString}=$depth")
+  def apply(target: Named, depth: Int = -1): VisualizerAnnotation = {
+    VisualizerAnnotation(target, s"${Visualizer.DepthString}=$depth")
   }
 
   /**
@@ -47,7 +49,7 @@ object VisualizerAnnotation {
     * @return
     */
   def setDotProgram(program: String): Annotation = {
-    Annotation(CircuitTopName, classOf[VisualizerTransform], s"${Visualizer.DotProgramString}=$program")
+    VisualizerAnnotation(CircuitTopName, s"${Visualizer.DotProgramString}=$program")
   }
 
   /**
@@ -58,14 +60,29 @@ object VisualizerAnnotation {
     * @return
     */
   def setOpenProgram(program: String): Annotation = {
-    Annotation(CircuitTopName, classOf[VisualizerTransform], s"${Visualizer.OpenProgramString}=$program")
+    VisualizerAnnotation(CircuitTopName, s"${Visualizer.OpenProgramString}=$program")
   }
 
-  def unapply(a: Annotation): Option[(Named, String)] = a match {
-    case Annotation(named, t, value) if t == classOf[VisualizerTransform] =>
-      Some((named, value))
-    case _ => None
-  }
+//  def unapply(a: Annotation): Option[(Named, String)] = a match {
+//    case VisualizerAnnotation(named, value) =>
+//      Some((named, value))
+//    case _ => None
+//  }
+}
+
+case class VisualizerAnnotation(target: Named, value: String) extends SingleTargetAnnotation[Named] {
+  override def duplicate(n: Named): Annotation = this.copy(target = n)
+}
+
+case class VisualizerChiselAnnotation(
+  target: InstanceId,
+  value: String
+) extends ChiselAnnotation with RunFirrtlTransform {
+
+  override def toFirrtl: Annotation = VisualizerAnnotation(target.toNamed, value)
+
+  override def transformClass: Class[_ <: Transform] = classOf[VisualizerTransform]
+
 }
 
 /**
@@ -83,8 +100,10 @@ trait VisualizerAnnotator {
     *                   and so forth.
     * @return
     */
-  def visualize(component: chisel3.Module, depth: Int = 0): Unit = {
-    annotate(ChiselAnnotation(component, classOf[VisualizerTransform], s"${Visualizer.DepthString}=$depth"))
+  def visualize(component: InstanceId, depth: Int = 0): Unit = {
+    experimental.annotate(
+      VisualizerChiselAnnotation(component, s"${Visualizer.DepthString}=$depth")
+    )
   }
   /**
     * Use this to set the program to convert the dot file to a png.  dot and fdp seem to work well, others
@@ -93,7 +112,9 @@ trait VisualizerAnnotator {
     * @return
     */
   def setDotProgram(program: String): Unit = {
-    annotate(ChiselAnnotation(self, classOf[VisualizerTransform], s"${Visualizer.DotProgramString}=$program"))
+    experimental.annotate(
+      VisualizerChiselAnnotation(self, s"${Visualizer.DotProgramString}=$program")
+    )
   }
   /**
     * Use this control what program will be called with the png file as its command line argument.
@@ -103,7 +124,9 @@ trait VisualizerAnnotator {
     * @return
     */
   def setOpenProgram(program: String): Unit = {
-    annotate(ChiselAnnotation(self, classOf[VisualizerTransform], s"${Visualizer.OpenProgramString}=$program"))
+    experimental.annotate(
+      VisualizerChiselAnnotation(self, s"${Visualizer.OpenProgramString}=$program")
+    )
   }
 }
 
@@ -273,8 +296,8 @@ class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
             resolveRef(getFirrtlName(name), expand(name))
           case subfield: WSubField =>
             resolveRef(getFirrtlName(subfield.serialize), expand(subfield.serialize))
-          case subindex: WSubIndex =>
-            resolveRef(getFirrtlName(subindex.serialize), expand(subindex.serialize))
+          case subIndex: WSubIndex =>
+            resolveRef(getFirrtlName(subIndex.serialize), expand(subIndex.serialize))
           case validIf : ValidIf =>
             val validIfNode = ValidIfNode(s"validif_${validIf.hashCode().abs}", Some(moduleNode))
             moduleNode += validIfNode
@@ -311,7 +334,7 @@ class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
 
         }
 
-        if(scope.doPorts) {
+        if(scope.doPorts()) {
           showPorts(firrtl.ir.Input)
           showPorts(firrtl.ir.Output)
         }
@@ -329,7 +352,7 @@ class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
             block.stmts.foreach { subStatement =>
               processStatement(subStatement)
             }
-          case con: Connect if scope.doComponents =>
+          case con: Connect if scope.doComponents() =>
             val (fName, dotName) = con.loc match {
               case WRef(name, _, _, _) => (getFirrtlName(name), expand(name))
               case Reference(name, _) => (getFirrtlName(name), expand(name))
@@ -357,21 +380,21 @@ class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
 
             processModule(newPrefix, subModule, subModuleNode, getScope(moduleName, scope))
 
-          case DefNode(_, name, expression) if scope.doComponents =>
+          case DefNode(_, name, expression) if scope.doComponents() =>
             val fName = getFirrtlName(name)
             val nodeNode = NodeNode(name, Some(moduleNode))
             moduleNode += nodeNode
             nameToNode(fName) = nodeNode
             moduleNode.connect(expand(name), processExpression(expression))
-          case DefWire(_, name, _) if scope.doComponents =>
+          case DefWire(_, name, _) if scope.doComponents() =>
             val fName = getFirrtlName(name)
             val nodeNode = NodeNode(name, Some(moduleNode))
             nameToNode(fName) = nodeNode
-          case reg: DefRegister if scope.doComponents =>
+          case reg: DefRegister if scope.doComponents() =>
             val regNode = RegisterNode(reg.name, Some(moduleNode))
             nameToNode(getFirrtlName(reg.name)) = regNode
             moduleNode += regNode
-          case memory: DefMemory if scope.doComponents =>
+          case memory: DefMemory if scope.doComponents() =>
             processMemory(memory)
           case _ =>
           // let everything else slide
@@ -394,15 +417,18 @@ class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
     }
 
     def getScope(moduleName: String, currentScope: Scope = Scope()): Scope = {
-      val applicableAnnotation = annotations.find { annotation =>
-        annotation.target match {
-          case ModuleName(annotationModuleName, _) =>
-            annotationModuleName == moduleName
-          case CircuitTopName =>
-            currentScope.maxDepth >= 0
-          case _ =>
-            false
+      val applicableAnnotation = annotations.find {
+        case annotation : SingleTargetAnnotation[_] =>
+          annotation.target match {
+            case ModuleName(annotationModuleName, _) =>
+              annotationModuleName == moduleName
+            case CircuitTopName =>
+              currentScope.maxDepth >= 0
+            case _ =>
+              false
         }
+        case _ =>
+          false
       }
       applicableAnnotation match {
         case Some(VisualizerAnnotation(_, maxDepthString)) =>
@@ -452,31 +478,29 @@ class VisualizerTransform extends Transform {
     var dotProgram = "dot"
     var openProgram = "open"
 
-    getMyAnnotations(state) match {
-      case Nil => state
-      case myAnnotations =>
-        val filteredAnnotations = myAnnotations.flatMap {
-          case annotation@VisualizerAnnotation(_, value) =>
-            if(value.startsWith(Visualizer.DotProgramString)) {
-              dotProgram = value.split("=", 2).last.trim
-              None
-            }
-            else if(value.startsWith(Visualizer.OpenProgramString)) {
-              openProgram = value.split("=", 2).last.trim
-              None
-            }
-            else {
-              Some(annotation)
-            }
+    val filteredAnnotations = state.annotations.flatMap {
+      case annotation@VisualizerAnnotation(_, value) =>
+        if(value.startsWith(Visualizer.DotProgramString)) {
+          dotProgram = value.split("=", 2).last.trim
+          None
         }
-        new VisualizerPass(filteredAnnotations).run(state.circuit)
-
-        val fileName = s"${state.circuit.main}.dot"
-
-        show(fileName, dotProgram, openProgram)
-
-        state
+        else if(value.startsWith(Visualizer.OpenProgramString)) {
+          openProgram = value.split("=", 2).last.trim
+          None
+        }
+        else {
+          Some(annotation)
+        }
+      case _ => None
     }
+
+    new VisualizerPass(filteredAnnotations).run(state.circuit)
+
+    val fileName = s"${state.circuit.main}.dot"
+
+    show(fileName, dotProgram, openProgram)
+
+    state
   }
 }
 
@@ -486,17 +510,17 @@ object Visualizer {
   val OpenProgramString = "OpenProgram"
 
   def run(fileName : String, dotProgram : String = "fdp", openProgram: String = "open"): Unit = {
-    val sourceFirttl = io.Source.fromFile(fileName).getLines().mkString("\n")
+    val sourceFirrtl = io.Source.fromFile(fileName).getLines().mkString("\n")
 
-    val ast = Parser.parse(sourceFirttl)
-    val annotations = AnnotationMap(
+    val ast = Parser.parse(sourceFirrtl)
+    val annotations = AnnotationSeq(
       Seq(
         VisualizerAnnotation(CircuitTopName),
         VisualizerAnnotation.setDotProgram(dotProgram),
         VisualizerAnnotation.setOpenProgram(openProgram)
       )
     )
-    val circuitState = CircuitState(ast, LowForm, Some(annotations))
+    val circuitState = CircuitState(ast, LowForm, annotations)
 
     val transform = new VisualizerTransform
 
