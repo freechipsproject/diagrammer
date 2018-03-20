@@ -4,7 +4,13 @@ package dotvisualizer
 
 import java.io.{File, PrintWriter}
 
-case class MuxNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
+case class MuxNode(
+  name: String,
+  parentOpt: Option[DotNode],
+  arg0ValueOpt: Option[String] = None,
+  arg1ValueOpt: Option[String] = None
+) extends DotNode {
+
   val select: String = s"$name:select"
   val in1: String = s"$name:in1"
   val in2: String = s"$name:in2"
@@ -15,12 +21,12 @@ case class MuxNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
        |$name [shape = "plaintext" label=<
        |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
        |  <TR>
-       |    <TD PORT="in1">&#x25cf;</TD>
+       |    <TD PORT="in1">${arg0ValueOpt.getOrElse(PrimOpNode.BlackDot)}</TD>
        |    <TD ROWSPAN="2" PORT="select">a?</TD>
        |    <TD ROWSPAN="2" PORT="out">&#x25cf;</TD>
        |  </TR>
        |  <TR>
-       |    <TD PORT="in2">&#x25cf;</TD>
+       |    <TD PORT="in2">${arg1ValueOpt.getOrElse(PrimOpNode.BlackDot)}</TD>
        |  </TR>
        |</TABLE>>];
        """.stripMargin

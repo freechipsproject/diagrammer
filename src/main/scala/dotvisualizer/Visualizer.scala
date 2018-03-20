@@ -197,12 +197,23 @@ class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
         s"${moduleNode.absoluteName}_$name".replaceAll("""\.""", "_")
       }
 
+      def getLiteralValue(expression: Expression): Option[String] = {
+        expression match {
+          case UIntLiteral(x, _) => Some(x.toString)
+          case SIntLiteral(x, _) => Some(x.toString)
+          case _                 => None
+        }
+      }
+
       def processPrimOp(primOp: DoPrim): String = {
         def addBinOpNode(symbol: String): String = {
-          val opNode = BinaryOpNode(symbol, Some(moduleNode))
+          val arg0ValueOpt = getLiteralValue(primOp.args.head)
+          val arg1ValueOpt = getLiteralValue(primOp.args.tail.head)
+
+          val opNode = BinaryOpNode(symbol, Some(moduleNode), arg0ValueOpt, arg1ValueOpt)
           moduleNode += opNode
-          moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
-          moduleNode.connect(opNode.in2, processExpression(primOp.args.tail.head))
+          if(arg0ValueOpt.isEmpty) moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
+          if(arg1ValueOpt.isEmpty) moduleNode.connect(opNode.in2, processExpression(primOp.args.tail.head))
           opNode.asRhs
         }
 
@@ -284,11 +295,14 @@ class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
         }
         val result = expression match {
           case mux: firrtl.ir.Mux =>
-            val muxNode = MuxNode(s"mux_${mux.hashCode().abs}", Some(moduleNode))
+            val arg0ValueOpt = getLiteralValue(mux.tval)
+            val arg1ValueOpt = getLiteralValue(mux.fval)
+
+            val muxNode = MuxNode(s"mux_${mux.hashCode().abs}", Some(moduleNode), arg0ValueOpt, arg1ValueOpt)
             moduleNode += muxNode
             moduleNode.connect(muxNode.select, processExpression(mux.cond))
-            moduleNode.connect(muxNode.in1, processExpression(mux.tval))
-            moduleNode.connect(muxNode.in2, processExpression(mux.fval))
+            if(arg0ValueOpt.isEmpty) moduleNode.connect(muxNode.in1, processExpression(mux.tval))
+            if(arg1ValueOpt.isEmpty) moduleNode.connect(muxNode.in2, processExpression(mux.fval))
             muxNode.asRhs
           case WRef(name, _, _, _) =>
             resolveRef(getFirrtlName(name), expand(name))

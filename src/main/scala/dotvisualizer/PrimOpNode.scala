@@ -9,9 +9,17 @@ object PrimOpNode {
     pseudoHash += 1
     pseudoHash
   }
+
+  val BlackDot = "&#x25cf;"
 }
 
-case class BinaryOpNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
+case class BinaryOpNode(
+  name: String,
+  parentOpt: Option[DotNode],
+  arg0ValueOpt: Option[String],
+  arg1ValueOpt: Option[String]
+) extends DotNode {
+
   def in1: String = s"$absoluteName:in1"
   def in2: String = s"$absoluteName:in2"
   override val absoluteName: String = s"op_${name}_${PrimOpNode.hash}"
@@ -22,12 +30,12 @@ case class BinaryOpNode(name: String, parentOpt: Option[DotNode]) extends DotNod
        |$absoluteName [shape = "plaintext" label=<
        |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
        |  <TR>
-       |    <TD PORT="in1">&#x25cf;</TD>
+       |    <TD PORT="in1">${arg0ValueOpt.getOrElse(PrimOpNode.BlackDot)}</TD>
        |    <TD ROWSPAN="2" > $name </TD>
-       |    <TD ROWSPAN="2" PORT="out">&#x25cf;</TD>
+       |    <TD ROWSPAN="2" PORT="out">${PrimOpNode.BlackDot}</TD>
        |  </TR>
        |  <TR>
-       |    <TD PORT="in2">&#x25cf;</TD>
+       |    <TD PORT="in2">${arg1ValueOpt.getOrElse(PrimOpNode.BlackDot)}</TD>
        |  </TR>
        |</TABLE>>];
        """.stripMargin
