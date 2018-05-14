@@ -535,6 +535,9 @@ object ToLoFirrtl extends Compiler {
   }
 }
 
+//TODO: (chick) consider clickable image maps as in
+// https://stackoverflow.com/questions/18478559/generate-clickable-dot-graph-for-website
+
 object Visualizer {
   val DepthString       = "Depth"
   val DotProgramString  = "DotProgram"
