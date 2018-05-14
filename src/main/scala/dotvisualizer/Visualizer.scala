@@ -7,11 +7,13 @@ import java.io.PrintWriter
 import chisel3.experimental
 import chisel3.experimental.{ChiselAnnotation, RunFirrtlTransform}
 import chisel3.internal.InstanceId
+import firrtl.CompilerUtils.getLoweringTransforms
 import firrtl.PrimOps._
 import firrtl._
 import firrtl.annotations._
 import firrtl.ir._
 import firrtl.passes.Pass
+import firrtl.transforms.BlackBoxSourceHelper
 
 import scala.collection.mutable
 import sys.process._
@@ -49,7 +51,7 @@ object VisualizerAnnotation {
     * @return
     */
   def setDotProgram(program: String): Annotation = {
-    VisualizerAnnotation(CircuitTopName, s"${Visualizer.DotProgramString}=$program")
+    VisualizerAnnotation(CircuitName("Vizualizer"), s"${Visualizer.DotProgramString}=$program")
   }
 
   /**
@@ -60,7 +62,7 @@ object VisualizerAnnotation {
     * @return
     */
   def setOpenProgram(program: String): Annotation = {
-    VisualizerAnnotation(CircuitTopName, s"${Visualizer.OpenProgramString}=$program")
+    VisualizerAnnotation(CircuitName("Vizualizer"), s"${Visualizer.OpenProgramString}=$program")
   }
 
 //  def unapply(a: Annotation): Option[(Named, String)] = a match {
@@ -436,7 +438,7 @@ class VisualizerPass(val annotations: Seq[Annotation]) extends Pass {
           annotation.target match {
             case ModuleName(annotationModuleName, _) =>
               annotationModuleName == moduleName
-            case CircuitTopName =>
+            case _: CircuitName =>
               currentScope.maxDepth >= 0
             case _ =>
               false
@@ -518,6 +520,21 @@ class VisualizerTransform extends Transform {
   }
 }
 
+object ToLoFirrtl extends Compiler {
+  override def emitter: Emitter = new LowFirrtlEmitter
+  override def transforms: Seq[Transform] = {
+    getLoweringTransforms(ChirrtlForm, LowForm) ++
+      Seq(new LowFirrtlOptimization, new BlackBoxSourceHelper)
+  }
+
+  def lower(c: Circuit): Circuit = {
+
+    val compileResult = compileAndEmit(firrtl.CircuitState(c, ChirrtlForm))
+
+    compileResult.circuit
+  }
+}
+
 object Visualizer {
   val DepthString       = "Depth"
   val DotProgramString  = "DotProgram"
@@ -527,14 +544,16 @@ object Visualizer {
     val sourceFirrtl = io.Source.fromFile(fileName).getLines().mkString("\n")
 
     val ast = Parser.parse(sourceFirrtl)
+
+    val loweredAst = ToLoFirrtl.lower(ast)
     val annotations = AnnotationSeq(
       Seq(
-        VisualizerAnnotation(CircuitTopName),
+        VisualizerAnnotation(CircuitName("Visualizer")),
         VisualizerAnnotation.setDotProgram(dotProgram),
         VisualizerAnnotation.setOpenProgram(openProgram)
       )
     )
-    val circuitState = CircuitState(ast, LowForm, annotations)
+    val circuitState = CircuitState(loweredAst, LowForm, annotations)
 
     val transform = new VisualizerTransform
 
