@@ -7,6 +7,7 @@ import chisel3.iotesters.{ChiselFlatSpec, PeekPokeTester}
 import dotvisualizer.VisualizerAnnotator
 
 class GCD extends Module with VisualizerAnnotator {
+  //noinspection TypeAnnotation
   val io = IO(new Bundle {
     val a  = Input(UInt(16.W))
     val b  = Input(UInt(16.W))
