@@ -17,8 +17,10 @@ import org.scalatest._
 
 /**
   * This class has parameterizable widths, it will generate different hardware
+  *
   * @param widthC io width
   */
+//noinspection TypeAnnotation
 class VizModC(widthC: Int) extends Module with VisualizerAnnotator {
   val io = IO(new Bundle {
     val in = Input(UInt(widthC.W))
@@ -35,6 +37,7 @@ class VizModC(widthC: Int) extends Module with VisualizerAnnotator {
   * @param annoParam  parameter is only used in annotation not in circuit
   */
 class VizModA(annoParam: Int) extends Module with VisualizerAnnotator {
+  //noinspection TypeAnnotation
   val io = IO(new Bundle {
     val in = Input(UInt())
     val out = Output(UInt())
@@ -47,6 +50,7 @@ class VizModA(annoParam: Int) extends Module with VisualizerAnnotator {
 }
 
 class VizModB(widthB: Int) extends Module with VisualizerAnnotator{
+  //noinspection TypeAnnotation
   val io = IO(new Bundle {
     val in = Input(UInt(widthB.W))
     val out = Output(UInt(widthB.W))
@@ -57,6 +61,7 @@ class VizModB(widthB: Int) extends Module with VisualizerAnnotator{
 }
 
 class TopOfVisualizer extends Module with VisualizerAnnotator {
+  //noinspection TypeAnnotation
   val io = IO(new Bundle {
     val in1    = Input(UInt(32.W))
     val in2    = Input(UInt(32.W))
