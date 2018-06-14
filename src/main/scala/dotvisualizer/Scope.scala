@@ -3,7 +3,10 @@
 package dotvisualizer
 
 case class Scope(depth: Int = -1, maxDepth: Int = -1) {
-  def doComponents(): Boolean = depth >= 0 && (maxDepth == -1 || depth < maxDepth)
+  def doComponents(): Boolean = {
+    val result = depth >= 0 && (maxDepth == -1 || depth < maxDepth)
+    result
+  }
   def doPorts(): Boolean = depth >= 0 && (maxDepth == -1 || depth <= maxDepth)
 
   def descend: Scope = {
