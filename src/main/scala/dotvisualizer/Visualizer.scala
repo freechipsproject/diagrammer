@@ -7,13 +7,11 @@ import java.io.PrintWriter
 import chisel3.experimental
 import chisel3.experimental.{ChiselAnnotation, RunFirrtlTransform}
 import chisel3.internal.InstanceId
-import firrtl.CompilerUtils.getLoweringTransforms
 import firrtl.PrimOps._
 import firrtl._
 import firrtl.annotations._
 import firrtl.ir._
 import firrtl.passes.Pass
-import firrtl.transforms.BlackBoxSourceHelper
 
 import scala.collection.mutable
 import sys.process._
@@ -71,7 +69,7 @@ object VisualizerAnnotation {
     * @return
     */
   def setOutputFormat(format: String): Annotation = {
-    VisualizerAnnotation(CircuitName("Vizualizer"), s"${Visualizer.OpenProgramString}=$format")
+    VisualizerAnnotation(CircuitName("Vizualizer"), s"${Visualizer.OutputFormatString}=$format")
   }
 
 //  def unapply(a: Annotation): Option[(Named, String)] = a match {
@@ -158,6 +156,10 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
     val printFile = new PrintWriter(new java.io.File(s"$targetDir${c.main}.dot"))
     def pl(s: String): Unit = {
       printFile.println(s.split("\n").mkString("\n"))
+    }
+
+    def getCode(e: Expression): String = {
+      if(e.hashCode() > 0 ) e.hashCode().toString else "x" + e.hashCode().abs
     }
 
     /**
@@ -305,12 +307,15 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
             case _ => dotName
           }
         }
+
         val result = expression match {
           case mux: firrtl.ir.Mux =>
             val arg0ValueOpt = getLiteralValue(mux.tval)
             val arg1ValueOpt = getLiteralValue(mux.fval)
 
-            val muxNode = MuxNode(s"mux_${mux.hashCode().abs}", Some(moduleNode), arg0ValueOpt, arg1ValueOpt)
+            val name = expand("mux")
+
+            val muxNode = MuxNode(s"${name}_${getCode(mux)}", Some(moduleNode), arg0ValueOpt, arg1ValueOpt)
             moduleNode += muxNode
             moduleNode.connect(muxNode.select, processExpression(mux.cond))
             if(arg0ValueOpt.isEmpty) moduleNode.connect(muxNode.in1, processExpression(mux.tval))
@@ -325,7 +330,7 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
           case subIndex: WSubIndex =>
             resolveRef(getFirrtlName(subIndex.serialize), expand(subIndex.serialize))
           case validIf : ValidIf =>
-            val validIfNode = ValidIfNode(s"validif_${validIf.hashCode().abs}", Some(moduleNode))
+            val validIfNode = ValidIfNode(s"validif_${getCode(validIf)}", Some(moduleNode))
             moduleNode += validIfNode
             moduleNode.connect(validIfNode.select, processExpression(validIf.cond))
             moduleNode.connect(validIfNode.in1, processExpression(validIf.value))
@@ -530,24 +535,9 @@ class VisualizerTransform extends Transform {
 
     val fileName = s"$targetDir${state.circuit.main}.dot"
 
-    show(fileName, dotProgram, openProgram)
+    show(fileName, dotProgram = dotProgram, openProgram = openProgram)
 
     state
-  }
-}
-
-object ToLoFirrtl extends Compiler {
-  override def emitter: Emitter = new LowFirrtlEmitter
-  override def transforms: Seq[Transform] = {
-    getLoweringTransforms(ChirrtlForm, LowForm) ++
-      Seq(new LowFirrtlOptimization, new BlackBoxSourceHelper)
-  }
-
-  def lower(c: Circuit): Circuit = {
-
-    val compileResult = compileAndEmit(firrtl.CircuitState(c, ChirrtlForm))
-
-    compileResult.circuit
   }
 }
 
@@ -555,14 +545,14 @@ object ToLoFirrtl extends Compiler {
 // https://stackoverflow.com/questions/18478559/generate-clickable-dot-graph-for-website
 
 object Visualizer {
-  val DepthString       = "Depth"
-  val DotProgramString  = "DotProgram"
-  val OpenProgramString = "OpenProgram"
-  val OutputFormat      = "OutputFormat"
+  val DepthString        = "Depth"
+  val DotProgramString   = "DotProgram"
+  val OpenProgramString  = "OpenProgram"
+  val OutputFormatString = "OutputFormat"
 
   def run(
     fileName     : String,
-    dotProgram   : String = "fdp",
+    dotProgram   : String = "dot",
     openProgram  : String = "open",
     outputFormat : String = "svg"
   ): Unit = {
@@ -574,7 +564,7 @@ object Visualizer {
     val loweredAst = ToLoFirrtl.lower(ast)
     val annotations = AnnotationSeq(
       Seq(
-        VisualizerAnnotation(CircuitName("Visualizer")),
+        VisualizerAnnotation(CircuitName(ast.main), depth = 10),
         VisualizerAnnotation.setDotProgram(dotProgram),
         VisualizerAnnotation.setOpenProgram(openProgram),
         VisualizerAnnotation.setOutputFormat(outputFormat)
