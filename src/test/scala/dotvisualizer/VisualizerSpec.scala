@@ -46,7 +46,7 @@ class VizModA(annoParam: Int) extends Module with VisualizerAnnotator {
   modC.io.in := io.in
   io.out := modC.io.out
 
-    visualize(this, depth = 3)
+    visualize(this, depth = 1)
 }
 
 class VizModB(widthB: Int) extends Module with VisualizerAnnotator{
@@ -99,6 +99,7 @@ class TopOfVisualizer extends Module with VisualizerAnnotator {
     * Play with the depth over the range 0 to 3, to see how it affects rendering
     */
   visualize(this, depth = 3)
+  VisualizerAnnotation.setVisualizeAll("somestring")
 }
 
 class VisualizerTester(c: TopOfVisualizer) extends PeekPokeTester(c) {

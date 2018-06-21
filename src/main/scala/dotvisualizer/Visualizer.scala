@@ -10,6 +10,7 @@ import chisel3.internal.InstanceId
 import firrtl.CompilerUtils.getLoweringTransforms
 import firrtl.PrimOps._
 import firrtl._
+import firrtl.analyses.InstanceGraph
 import firrtl.annotations._
 import firrtl.ir._
 import firrtl.passes.Pass
@@ -51,7 +52,17 @@ object VisualizerAnnotation {
     * @return
     */
   def setDotProgram(program: String): Annotation = {
-    VisualizerAnnotation(CircuitName("Vizualizer"), s"${Visualizer.DotProgramString}=$program")
+    VisualizerAnnotation(CircuitName("Visualizer"), s"${Visualizer.DotProgramString}=$program")
+  }
+
+  /**
+    * Use this to set the program to convert the dot file to a png.  dot and fdp seem to work well, others
+    * might too.  Default is dot
+    * @param program program to create png
+    * @return
+    */
+  def setVisualizeAll(program: String): Annotation = {
+    VisualizerAnnotation(CircuitName("Visualizer"), s"${Visualizer.MultiGraph}=$program")
   }
 
   /**
@@ -352,7 +363,7 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
         def showPorts(dir: firrtl.ir.Direction): Unit = {
           module.ports.foreach {
             case port if port.direction == dir =>
-              val portNode = PortNode(port.name, Some(moduleNode))
+              val portNode = PortNode(port.name, Some(moduleNode), if(moduleNode.parentOpt.isEmpty) 0 else 1)
               nameToNode(getFirrtlName(port.name)) = portNode
               moduleNode += portNode
             case _ => None
@@ -398,10 +409,12 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
             }
             moduleNode.connect(lhsName, processExpression(con.expr))
 
-          case WDefInstance(_, instanceName, moduleName, _) =>
+          case WDefInstance(info, instanceName, moduleName, _) =>
             val subModule = findModule(moduleName, c)
             val newPrefix = if(modulePrefix.isEmpty) instanceName else modulePrefix + "." + instanceName
-            val subModuleNode = ModuleNode(instanceName, Some(moduleNode))
+            val url_string = "file:///Users/monica/ChiselProjects/visualizer/src/test/scala/dotvisualizer/" +
+              info.toString.drop(3).split(" ").head
+            val subModuleNode = ModuleNode(instanceName, Some(moduleNode), Some(url_string))
             moduleNode += subModuleNode
 
             processModule(newPrefix, subModule, subModuleNode, getScope(moduleName, scope))
@@ -468,6 +481,7 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
     findModule(c.main, c) match {
       case topModule: DefModule =>
         pl(s"digraph ${topModule.name} {")
+        pl("rankdir=\"LR\"")
 //        pl(s"graph [splines=ortho];")
         val topModuleNode = ModuleNode(c.main, parentOpt = None)
         processModule("", topModule, topModuleNode, getScope(topModule.name))
@@ -504,6 +518,7 @@ class VisualizerTransform extends Transform {
   override def execute(state: CircuitState): CircuitState = {
     var dotProgram = "dot"
     var openProgram = "open"
+    var doAllGraphs = false
 
     val targetDir = state.annotations.collectFirst { case x : TargetDirAnnotation => x } match {
       case Some(targetDirAnnotation) => targetDirAnnotation.value + "/"
@@ -520,17 +535,35 @@ class VisualizerTransform extends Transform {
           openProgram = value.split("=", 2).last.trim
           None
         }
+        else if(value.startsWith(Visualizer.MultiGraph)) {
+          //graph all graphs
+          doAllGraphs = true
+          None
+        }
         else {
           Some(annotation)
         }
       case _ => None
     }
 
-    new VisualizerPass(filteredAnnotations, targetDir).run(state.circuit)
+    if (doAllGraphs) {
+      val graph = new InstanceGraph(state.circuit)
 
-    val fileName = s"$targetDir${state.circuit.main}.dot"
+      graph.getChildrenInstances.foreach { child => //take child and convert into annotationv
+        child._2.foreach{ instance => instance
+         // val target = ComponentName(child._1, ModuleName())
+          val annotation = VisualizerAnnotation
+        }
+      }
+    } else {
 
-    show(fileName, dotProgram, openProgram)
+      new VisualizerPass(filteredAnnotations, targetDir).run(state.circuit)
+
+      val fileName = s"$targetDir${state.circuit.main}.dot"
+
+      show(fileName, dotProgram, openProgram)
+
+    }
 
     state
   }
@@ -559,6 +592,7 @@ object Visualizer {
   val DotProgramString  = "DotProgram"
   val OpenProgramString = "OpenProgram"
   val OutputFormat      = "OutputFormat"
+  val MultiGraph = "Multigraph"
 
   def run(
     fileName     : String,
@@ -577,7 +611,8 @@ object Visualizer {
         VisualizerAnnotation(CircuitName("Visualizer")),
         VisualizerAnnotation.setDotProgram(dotProgram),
         VisualizerAnnotation.setOpenProgram(openProgram),
-        VisualizerAnnotation.setOutputFormat(outputFormat)
+        VisualizerAnnotation.setOutputFormat(outputFormat),
+        VisualizerAnnotation.setVisualizeAll("somestring")
       )
     )
     val circuitState = CircuitState(loweredAst, LowForm, annotations)

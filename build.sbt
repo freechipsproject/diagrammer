@@ -1,8 +1,6 @@
-name := "chisel-dot-visualizer"
+name := "my-chisel-experiments"
 
-organization := "edu.berkeley.cs"
-
-version := "0.1-SNAPSHOT"
+version := "1.0"
 
 scalaVersion := "2.11.7"
 
@@ -23,4 +21,3 @@ libraryDependencies ++= (Seq("chisel3","chisel-iotesters").map {
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.5",
   "org.scalacheck" %% "scalacheck" % "1.12.4")
-

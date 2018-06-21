@@ -7,7 +7,7 @@ import java.io.{File, PrintWriter}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-case class ModuleNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
+case class ModuleNode(name: String, parentOpt: Option[DotNode], url_string:Option[String]=Some("https://www.google.com")) extends DotNode {
   val inputs: ArrayBuffer[DotNode] = new ArrayBuffer()
   val outputs: ArrayBuffer[DotNode] = new ArrayBuffer()
   val namedNodes: mutable.HashMap[String, DotNode] = new mutable.HashMap()
@@ -18,6 +18,7 @@ case class ModuleNode(name: String, parentOpt: Option[DotNode]) extends DotNode 
     val s = s"""
        |subgraph $absoluteName {
        |  label="$name"
+       |  URL="${url_string.getOrElse("")}"
        |  ${inputs.map(_.render).mkString("\n")}
        |  ${outputs.map(_.render).mkString("\n")}
        |  ${children.map(_.render).mkString("\n")}
