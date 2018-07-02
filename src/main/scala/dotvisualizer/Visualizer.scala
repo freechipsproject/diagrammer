@@ -23,6 +23,11 @@ import sys.process._
 //TODO: Chick: Allow way to suppress or minimize display of intermediate _T nodes
 //TODO: Chick: Consider merging constants in to muxes and primops, rather than wiring in a node.
 
+//TODO: MONICA: Generate separate dot file for each Mod, send file name as link to URL title,
+//TODO: make all mods not draw things inside
+//TODO: MONICA: Get rid of T's and Gen's?
+//TODO: Idea - split some string by _GEN_[0-9]*_ and then _T_[0-9]*_  and then reconcatenate, regex style, look up syntax because it's _GEN_#? and _T_#
+
 //scalastyle:off magic.number
 /**
   * This library implements a graphviz dot file render.  The annotation can specify at what module to
@@ -56,13 +61,14 @@ object VisualizerAnnotation {
   }
 
   /**
-    * Use this to set the program to convert the dot file to a png.  dot and fdp seem to work well, others
+    * Use this to set the program to create multiple files, one for each mod.  dot and fdp seem to work well, others
     * might too.  Default is dot
     * @param program program to create png
     * @return
     */
-  def setVisualizeAll(program: String): Annotation = {
+  def setVisualizeAll(program: Boolean): Annotation = {
     VisualizerAnnotation(CircuitName("Visualizer"), s"${Visualizer.MultiGraph}=$program")
+
   }
 
   /**
@@ -161,12 +167,14 @@ trait VisualizerAnnotator {
   * @param annotations  where to start rendering
   */
 //noinspection ScalaStyle
-class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") extends Pass {
+class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "", startModuleName : String) extends Pass {
+
+  val subModulesFound = new mutable.HashSet[DefModule]()
 
   def run (c:Circuit) : Circuit = {
     val nameToNode: mutable.HashMap[String, DotNode] = new mutable.HashMap()
 
-    val printFile = new PrintWriter(new java.io.File(s"$targetDir${c.main}.dot"))
+    val printFile = new PrintWriter(new java.io.File(s"$targetDir${startModuleName}.dot"))
     def pl(s: String): Unit = {
       printFile.println(s.split("\n").mkString("\n"))
     }
@@ -310,12 +318,14 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
 
       def processExpression(expression: firrtl.ir.Expression): String = {
         def resolveRef(firrtlName: String, dotName: String): String = {
-          nameToNode.get(firrtlName) match {
-            case Some(node) =>
-              node.asRhs
-            case _ => dotName
-          }
+            nameToNode.get(firrtlName) match {
+              case Some(node) =>
+                  node.asRhs
+              case _ => dotName
+            }
         }
+
+
         val result = expression match {
           case mux: firrtl.ir.Mux =>
             val arg0ValueOpt = getLiteralValue(mux.tval)
@@ -328,9 +338,9 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
             if(arg1ValueOpt.isEmpty) moduleNode.connect(muxNode.in2, processExpression(mux.fval))
             muxNode.asRhs
           case WRef(name, _, _, _) =>
-            resolveRef(getFirrtlName(name), expand(name))
+              resolveRef(getFirrtlName(name), expand(name))
           case Reference(name, _) =>
-            resolveRef(getFirrtlName(name), expand(name))
+              resolveRef(getFirrtlName(name), expand(name))
           case subfield: WSubField =>
             resolveRef(getFirrtlName(subfield.serialize), expand(subfield.serialize))
           case subIndex: WSubIndex =>
@@ -410,12 +420,18 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
             moduleNode.connect(lhsName, processExpression(con.expr))
 
           case WDefInstance(info, instanceName, moduleName, _) =>
+
             val subModule = findModule(moduleName, c)
             val newPrefix = if(modulePrefix.isEmpty) instanceName else modulePrefix + "." + instanceName
             val url_string = "file:///Users/monica/ChiselProjects/visualizer/src/test/scala/dotvisualizer/" +
-              info.toString.drop(3).split(" ").head
-            val subModuleNode = ModuleNode(instanceName, Some(moduleNode), Some(url_string))
+              info.toString.drop(3).split(" ").head //name of source code file
+            val line_num = info.toString().drop(3).split(" ").tail(0).split(":").head //line # in source code file
+            //val subModuleNode = ModuleNode(instanceName, Some(moduleNode), Some(url_string + "#line" + line_num))
+            val subModuleNode = ModuleNode(instanceName, Some(moduleNode), Some("file:///Users/monica/ChiselProjects/visualizer/test_run_dir/dotvisualizer.AnnotatingVisualizerSpec49436768/" +
+              moduleName + ".dot.svg"))
             moduleNode += subModuleNode
+
+            subModulesFound += subModule
 
             processModule(newPrefix, subModule, subModuleNode, getScope(moduleName, scope))
 
@@ -439,8 +455,6 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
           // let everything else slide
         }
       }
-
-      // println(s"Scope is $scope")
 
       myModule match {
         case module: firrtl.ir.Module =>
@@ -478,17 +492,17 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
       }
     }
 
-    findModule(c.main, c) match {
+    findModule(startModuleName, c) match {
       case topModule: DefModule =>
         pl(s"digraph ${topModule.name} {")
         pl("rankdir=\"LR\"")
 //        pl(s"graph [splines=ortho];")
-        val topModuleNode = ModuleNode(c.main, parentOpt = None)
+        val topModuleNode = ModuleNode(startModuleName, parentOpt = None)
         processModule("", topModule, topModuleNode, getScope(topModule.name))
         pl(topModuleNode.render)
         pl("}")
       case _ =>
-        println(s"could not find top module ${c.main}")
+        println(s"could not find top module ${startModuleName}")
     }
 
     printFile.close()
@@ -512,6 +526,14 @@ class VisualizerTransform extends Transform {
         val openProcessString = s"$openProgram $fileName.svg"
         openProcessString.!!
       }
+    }
+  }
+
+  def save(fileName: String, dotProgram: String = "dot"): Unit = {
+    if(dotProgram != "none") {
+      //noinspection SpellCheckingInspection
+      val dotProcessString = s"$dotProgram -Tsvg -O $fileName"
+      dotProcessString.!!
     }
   }
 
@@ -551,13 +573,28 @@ class VisualizerTransform extends Transform {
 
       graph.getChildrenInstances.foreach { child => //take child and convert into annotationv
         child._2.foreach{ instance => instance
-         // val target = ComponentName(child._1, ModuleName())
+          //val target = ComponentName(child._1, ModuleName())
           val annotation = VisualizerAnnotation
         }
       }
     } else {
 
-      new VisualizerPass(filteredAnnotations, targetDir).run(state.circuit)
+      val queue = new mutable.Queue[String]()
+      val modulesSeen = new mutable.HashSet[String]()
+
+      queue += state.circuit.main // top level visualizer
+
+      while(queue.nonEmpty) {
+        val moduleName = queue.dequeue()
+        if (!moduleName.contains(modulesSeen)) {
+
+          val pass = new VisualizerPass(filteredAnnotations, targetDir, moduleName)
+          pass.run(state.circuit)
+          queue ++= pass.subModulesFound.map(module => module.name)
+          save(s"$targetDir${moduleName}.dot", dotProgram)
+        }
+      }
+
 
       val fileName = s"$targetDir${state.circuit.main}.dot"
 
@@ -584,6 +621,7 @@ object ToLoFirrtl extends Compiler {
   }
 }
 
+
 //TODO: (chick) consider clickable image maps as in
 // https://stackoverflow.com/questions/18478559/generate-clickable-dot-graph-for-website
 
@@ -592,7 +630,7 @@ object Visualizer {
   val DotProgramString  = "DotProgram"
   val OpenProgramString = "OpenProgram"
   val OutputFormat      = "OutputFormat"
-  val MultiGraph = "Multigraph"
+  val MultiGraph        = "Multigraph"
 
   def run(
     fileName     : String,
@@ -605,6 +643,7 @@ object Visualizer {
 
     val ast = Parser.parse(sourceFirrtl)
 
+
     val loweredAst = ToLoFirrtl.lower(ast)
     val annotations = AnnotationSeq(
       Seq(
@@ -612,7 +651,7 @@ object Visualizer {
         VisualizerAnnotation.setDotProgram(dotProgram),
         VisualizerAnnotation.setOpenProgram(openProgram),
         VisualizerAnnotation.setOutputFormat(outputFormat),
-        VisualizerAnnotation.setVisualizeAll("somestring")
+        VisualizerAnnotation.setVisualizeAll(true)
       )
     )
     val circuitState = CircuitState(loweredAst, LowForm, annotations)

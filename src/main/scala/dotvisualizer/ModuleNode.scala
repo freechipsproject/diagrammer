@@ -7,7 +7,8 @@ import java.io.{File, PrintWriter}
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-case class ModuleNode(name: String, parentOpt: Option[DotNode], url_string:Option[String]=Some("https://www.google.com")) extends DotNode {
+case class ModuleNode(name: String, parentOpt: Option[DotNode], url_string:Option[String]=
+Some("file:///Users/monica/ChiselProjects/visualizer/test_run_dir/dotvisualizer.AnnotatingVisualizerSpec49436768/TopOfVisualizer.dot.svg")) extends DotNode {
   val inputs: ArrayBuffer[DotNode] = new ArrayBuffer()
   val outputs: ArrayBuffer[DotNode] = new ArrayBuffer()
   val namedNodes: mutable.HashMap[String, DotNode] = new mutable.HashMap()
