@@ -26,7 +26,6 @@ import sys.process._
 //TODO: MONICA: Generate separate dot file for each Mod, send file name as link to URL title,
 //TODO: make all mods not draw things inside
 //TODO: MONICA: Get rid of T's and Gen's?
-//TODO: Idea - split some string by _GEN_[0-9]*_ and then _T_[0-9]*_  and then reconcatenate, regex style, look up syntax because it's _GEN_#? and _T_#
 
 //scalastyle:off magic.number
 /**
