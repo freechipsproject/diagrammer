@@ -422,12 +422,12 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "", s
 
             val subModule = findModule(moduleName, c)
             val newPrefix = if(modulePrefix.isEmpty) instanceName else modulePrefix + "." + instanceName
-            val url_string = "file:///Users/monica/ChiselProjects/visualizer/src/test/scala/dotvisualizer/" +
-              info.toString.drop(3).split(" ").head //name of source code file
+            //val url_string = "file:///Users/monica/ChiselProjects/visualizer/src/test/scala/dotvisualizer/" +
+            //  info.toString.drop(3).split(" ").head //name of source code file
             val line_num = info.toString().drop(3).split(" ").tail(0).split(":").head //line # in source code file
             //val subModuleNode = ModuleNode(instanceName, Some(moduleNode), Some(url_string + "#line" + line_num))
-            val subModuleNode = ModuleNode(instanceName, Some(moduleNode), Some("file:///Users/monica/ChiselProjects/visualizer/test_run_dir/dotvisualizer.AnnotatingVisualizerSpec49436768/" +
-              moduleName + ".dot.svg"))
+            val moduleNameParsed = moduleName.split("/").last
+            val subModuleNode = ModuleNode(instanceName, Some(moduleNode), Some(moduleNameParsed + ".dot.svg"))
             moduleNode += subModuleNode
 
             subModulesFound += subModule
@@ -680,3 +680,4 @@ object Visualizer {
     }
   }
 }
+
