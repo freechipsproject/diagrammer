@@ -16,6 +16,10 @@ import firrtl.ir._
 import firrtl.passes.Pass
 import firrtl.transforms.BlackBoxSourceHelper
 
+import firrtl.Utils._
+import firrtl.Mappers._
+
+
 import scala.collection.mutable
 import sys.process._
 
@@ -154,6 +158,49 @@ trait VisualizerAnnotator {
     experimental.annotate(
       VisualizerChiselAnnotation(self, s"${Visualizer.OpenProgramString}=$program")
     )
+  }
+}
+
+class RemoveUselessGenTPass() extends Pass {
+
+  val toRemove = new mutable.HashMap[String, Expression]()
+
+  def run(c: Circuit): Circuit = {
+
+    def collectGenExpr(s: Statement): Statement = s match {
+      case block: Block => block.mapStmt(collectGenExpr)
+      case node: DefNode =>
+        if (node.name.startsWith("_GEN") || node.name.startsWith("_T")) {
+          toRemove(node.name) = node.value
+        }
+        s
+      case _ => s //do nothing
+    }
+
+    def removeGen(e: Expression): Expression = e match {
+      case wire: WRef =>
+        if (wire.name.startsWith("_GEN") || wire.name.startsWith("_T")) {
+          var wire.name = toRemove(wire.name).serialize
+
+        }
+        wire
+      case wire: WSubField =>
+        if (wire.name.startsWith("_GEN") || wire.name.startsWith("_T")) {
+          var wire.name = toRemove(wire.name).serialize
+        }
+        wire
+      case _ => e //do nothing
+    }
+
+    var modulesx = c.modules.map {
+      case (m:Module) => Module(m.info, m.name, m.ports, m.body.mapStmt(collectGenExpr))
+    }
+
+    modulesx = c.modules.map {
+      case (m:Module) => Module(m.info, m.name, m.ports, m.body.mapExpr(removeGen))
+    }
+
+    Circuit(c.info, modulesx, c.main)
   }
 }
 
@@ -424,7 +471,7 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "", s
             val newPrefix = if(modulePrefix.isEmpty) instanceName else modulePrefix + "." + instanceName
             //val url_string = "file:///Users/monica/ChiselProjects/visualizer/src/test/scala/dotvisualizer/" +
             //  info.toString.drop(3).split(" ").head //name of source code file
-            val line_num = info.toString().drop(3).split(" ").tail(0).split(":").head //line # in source code file
+            //val line_num = info.toString().drop(3).split(" ").tail(0).split(":").head //line # in source code file
             //val subModuleNode = ModuleNode(instanceName, Some(moduleNode), Some(url_string + "#line" + line_num))
             val moduleNameParsed = moduleName.split("/").last
             val subModuleNode = ModuleNode(instanceName, Some(moduleNode), Some(moduleNameParsed + ".dot.svg"))
@@ -567,39 +614,30 @@ class VisualizerTransform extends Transform {
       case _ => None
     }
 
-    if (doAllGraphs) {
-      val graph = new InstanceGraph(state.circuit)
+    val queue = new mutable.Queue[String]()
+    val modulesSeen = new mutable.HashSet[String]()
 
-      graph.getChildrenInstances.foreach { child => //take child and convert into annotationv
-        child._2.foreach{ instance => instance
-          //val target = ComponentName(child._1, ModuleName())
-          val annotation = VisualizerAnnotation
-        }
+    queue += state.circuit.main // top level visualizer
+
+    while(queue.nonEmpty) {
+      val moduleName = queue.dequeue()
+      if (!moduleName.contains(modulesSeen)) {
+
+        val pass_remove_gen = new RemoveUselessGenTPass()
+        val pass = new VisualizerPass(filteredAnnotations, targetDir, moduleName)
+        pass_remove_gen.run(state.circuit)
+        pass.run(state.circuit)
+
+        queue ++= pass.subModulesFound.map(module => module.name)
+        save(s"$targetDir${moduleName}.dot", dotProgram)
       }
-    } else {
-
-      val queue = new mutable.Queue[String]()
-      val modulesSeen = new mutable.HashSet[String]()
-
-      queue += state.circuit.main // top level visualizer
-
-      while(queue.nonEmpty) {
-        val moduleName = queue.dequeue()
-        if (!moduleName.contains(modulesSeen)) {
-
-          val pass = new VisualizerPass(filteredAnnotations, targetDir, moduleName)
-          pass.run(state.circuit)
-          queue ++= pass.subModulesFound.map(module => module.name)
-          save(s"$targetDir${moduleName}.dot", dotProgram)
-        }
-      }
-
-
-      val fileName = s"$targetDir${state.circuit.main}.dot"
-
-      show(fileName, dotProgram, openProgram)
-
     }
+
+
+    val fileName = s"$targetDir${state.circuit.main}.dot"
+
+    show(fileName, dotProgram, openProgram)
+
 
     state
   }
