@@ -27,9 +27,7 @@ import sys.process._
 //TODO: Chick: Allow way to suppress or minimize display of intermediate _T nodes
 //TODO: Chick: Consider merging constants in to muxes and primops, rather than wiring in a node.
 
-//TODO: MONICA: Generate separate dot file for each Mod, send file name as link to URL title,
-//TODO: make all mods not draw things inside
-//TODO: MONICA: Get rid of T's and Gen's?
+//TODO: MONICA: Get rid of T's and Gen's >:O
 
 //scalastyle:off magic.number
 /**
@@ -165,39 +163,77 @@ class RemoveUselessGenTPass() extends Pass {
 
   val toRemove = new mutable.HashMap[String, Expression]()
 
+  //replace the GEN or T in RHS OR LHS with the primop
+
+  //scalastyle:off method.length cyclomatic.complexity
   def run(c: Circuit): Circuit = {
 
-    def collectGenExpr(s: Statement): Statement = s match {
-      case block: Block => block.mapStmt(collectGenExpr)
+    def collectGenExpr(s: Statement): Option[Statement] = s match {
+      case block: Block =>
+        val result = Some(Block(block.stmts.flatMap{substatement =>
+          collectGenExpr(substatement)
+        }))
+        result
+
       case node: DefNode =>
         if (node.name.startsWith("_GEN") || node.name.startsWith("_T")) {
           toRemove(node.name) = node.value
+          None
+        } else {
+          Some(node)
         }
-        s
-      case _ => s //do nothing
+      case _ => Some(s) //do nothing
     }
 
-    def removeGen(e: Expression): Expression = e match {
-      case wire: WRef =>
-        if (wire.name.startsWith("_GEN") || wire.name.startsWith("_T")) {
-          var wire.name = toRemove(wire.name).serialize
+    def removeGen(e: Expression): Expression = {
+      e match {
+        case wire: WRef =>
+          if ((wire.name.startsWith("_GEN") || wire.name.startsWith("_T")) && toRemove.contains(wire.name)) {
+            val new_node = toRemove(wire.name)
+            removeGen(new_node)
+          } else {
+            wire
+          }
+        case wire: WSubField =>
+          if ((wire.name.startsWith("_GEN") || wire.name.startsWith("_T")) && toRemove.contains(wire.name)) {
+            val new_node = toRemove(wire.name)
+            removeGen(new_node)
+          } else {
+            wire
+          }
+        case wire: WSubIndex =>
+          wire.mapExpr(removeGen)
+        case _ => e //do nothing
+      }
+    }
 
-        }
-        wire
-      case wire: WSubField =>
-        if (wire.name.startsWith("_GEN") || wire.name.startsWith("_T")) {
-          var wire.name = toRemove(wire.name).serialize
-        }
-        wire
-      case _ => e //do nothing
+    def removeGenStatement(s: Statement): Option[Statement] = {
+      s match {
+        case block: Block =>
+          val result = Some(Block(block.stmts.flatMap{substatement =>
+            removeGenStatement(substatement)
+          }))
+          result
+        case node: DefNode =>
+          if (node.name.startsWith("_GEN") || node.name.startsWith("_T")) {
+            None
+          } else {
+            Some(node)
+          }
+        case other: Statement =>
+          Some(other.mapExpr(removeGen))
+        case _ => Some(s) //do nothing
+      }
     }
 
     var modulesx = c.modules.map {
-      case (m:Module) => Module(m.info, m.name, m.ports, m.body.mapStmt(collectGenExpr))
+      case (m:Module) => Module(m.info, m.name, m.ports, collectGenExpr(m.body).get)
     }
 
     modulesx = c.modules.map {
-      case (m:Module) => Module(m.info, m.name, m.ports, m.body.mapExpr(removeGen))
+      case (m:Module) =>
+        val new_body =  removeGenStatement(m.body).get
+        Module(m.info, m.name, m.ports, new_body)
     }
 
     Circuit(c.info, modulesx, c.main)
@@ -617,16 +653,19 @@ class VisualizerTransform extends Transform {
     val queue = new mutable.Queue[String]()
     val modulesSeen = new mutable.HashSet[String]()
 
-    queue += state.circuit.main // top level visualizer
+
+    //var new_state = state.copy(circuit = state.circuit.copy(modules = state.circuit.modules.map()))
+    val pass_remove_gen = new RemoveUselessGenTPass()
+    var circuit = pass_remove_gen.run(state.circuit)
+
+    queue += circuit.main // top level visualizer
 
     while(queue.nonEmpty) {
       val moduleName = queue.dequeue()
       if (!moduleName.contains(modulesSeen)) {
 
-        val pass_remove_gen = new RemoveUselessGenTPass()
         val pass = new VisualizerPass(filteredAnnotations, targetDir, moduleName)
-        pass_remove_gen.run(state.circuit)
-        pass.run(state.circuit)
+        circuit = pass.run(circuit)
 
         queue ++= pass.subModulesFound.map(module => module.name)
         save(s"$targetDir${moduleName}.dot", dotProgram)
