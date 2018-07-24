@@ -203,7 +203,7 @@ class RemoveUselessGenTPass() extends Pass {
           }
         case wire: WSubIndex =>
           wire.mapExpr(removeGen)
-        case _ => e //do nothing
+        case ee => ee.mapExpr(removeGen) //do nothing
       }
     }
 
@@ -226,17 +226,16 @@ class RemoveUselessGenTPass() extends Pass {
       }
     }
 
-    var modulesx = c.modules.map {
-      case (m:Module) => Module(m.info, m.name, m.ports, collectGenExpr(m.body).get)
+    var newModules = c.modules.map {
+      case m: Module => Module(m.info, m.name, m.ports, collectGenExpr(m.body).get)
     }
 
-    modulesx = c.modules.map {
-      case (m:Module) =>
+    newModules = newModules.map { m: Module =>
         val new_body =  removeGenStatement(m.body).get
         Module(m.info, m.name, m.ports, new_body)
     }
 
-    Circuit(c.info, modulesx, c.main)
+    Circuit(c.info, newModules, c.main)
   }
 }
 
@@ -256,7 +255,7 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "", s
   def run (c:Circuit) : Circuit = {
     val nameToNode: mutable.HashMap[String, DotNode] = new mutable.HashMap()
 
-    val printFile = new PrintWriter(new java.io.File(s"$targetDir${startModuleName}.dot"))
+    val printFile = new PrintWriter(new java.io.File(s"$targetDir$startModuleName.dot"))
     def pl(s: String): Unit = {
       printFile.println(s.split("\n").mkString("\n"))
     }
@@ -501,7 +500,7 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "", s
             }
             moduleNode.connect(lhsName, processExpression(con.expr))
 
-          case WDefInstance(info, instanceName, moduleName, _) =>
+          case WDefInstance(_, instanceName, moduleName, _) =>
 
             val subModule = findModule(moduleName, c)
             val newPrefix = if(modulePrefix.isEmpty) instanceName else modulePrefix + "." + instanceName
@@ -584,7 +583,7 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "", s
         pl(topModuleNode.render)
         pl("}")
       case _ =>
-        println(s"could not find top module ${startModuleName}")
+        println(s"could not find top module $startModuleName")
     }
 
     printFile.close()
@@ -668,7 +667,7 @@ class VisualizerTransform extends Transform {
         circuit = pass.run(circuit)
 
         queue ++= pass.subModulesFound.map(module => module.name)
-        save(s"$targetDir${moduleName}.dot", dotProgram)
+        save(s"$targetDir$moduleName.dot", dotProgram)
       }
     }
 
@@ -710,7 +709,8 @@ object Visualizer {
 
   def run(
     fileName     : String,
-    dotProgram   : String = "fdp",
+    // dotProgram   : String = "fdp",
+    dotProgram   : String = "dot",
     openProgram  : String = "open",
     outputFormat : String = "svg"
   ): Unit = {
