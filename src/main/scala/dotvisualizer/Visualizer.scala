@@ -16,6 +16,7 @@ import firrtl.ir._
 import firrtl.passes.Pass
 import firrtl.transforms.BlackBoxSourceHelper
 
+
 import firrtl.Utils._
 import firrtl.Mappers._
 
@@ -27,7 +28,7 @@ import sys.process._
 //TODO: Chick: Allow way to suppress or minimize display of intermediate _T nodes
 //TODO: Chick: Consider merging constants in to muxes and primops, rather than wiring in a node.
 
-//TODO: MONICA: Get rid of T's and Gen's >:O
+//TODO: MONICA: Implement depth
 
 //scalastyle:off magic.number
 /**
@@ -163,8 +164,6 @@ class RemoveUselessGenTPass() extends Pass {
 
   val toRemove = new mutable.HashMap[String, Expression]()
 
-  //replace the GEN or T in RHS OR LHS with the primop
-
   //scalastyle:off method.length cyclomatic.complexity
   def run(c: Circuit): Circuit = {
 
@@ -203,7 +202,7 @@ class RemoveUselessGenTPass() extends Pass {
           }
         case wire: WSubIndex =>
           wire.mapExpr(removeGen)
-        case ee => ee.mapExpr(removeGen) //do nothing
+        case ee => ee.mapExpr(removeGen)
       }
     }
 
@@ -238,6 +237,56 @@ class RemoveUselessGenTPass() extends Pass {
     Circuit(c.info, newModules, c.main)
   }
 }
+
+class TopLevelModPass(targetDir: String, nameOfFile: String) extends Pass {
+
+  def save(fileName: String, dotProgram: String = "dot"): Unit = {
+    if(dotProgram != "none") {
+      //noinspection SpellCheckingInspection
+      val dotProcessString = s"$dotProgram -Tsvg -O $fileName"
+      dotProcessString.!!
+    }
+  }
+
+  def run (c:Circuit) : Circuit = {
+    val TopLevel = "TopLevel"
+    val printFile = new PrintWriter(new java.io.File(s"$targetDir$TopLevel.dot"))
+    printFile.write("digraph " + TopLevel + " { rankdir=\"LR\" \n node [shape=\"rectangle\"]; \n")
+
+
+    //statements that have modules, have a list of module names,
+
+    var relations = new mutable.HashMap[String, mutable.HashSet[WDefInstance]]
+
+    c.modules.map {
+      case m: Module =>
+        var insts = new mutable.HashSet[WDefInstance]
+        firrtl.analyses.InstanceGraph.collectInstances(insts)(m.body)
+        relations.put(m.name, insts)
+        m
+    }
+
+    for (entry <- relations) {
+      for (submodule <- entry._2) {
+        printFile.write(entry._1)
+        printFile.write("-> ")
+        printFile.write(submodule.name)
+        printFile.write(" ")
+        printFile.write(" \n")
+      }
+    }
+
+    printFile.write("\"Back\" [URL=\"" + nameOfFile + ".dot.svg\" ]")
+    printFile.write("}")
+    printFile.close()
+    save(s"$targetDir$TopLevel.dot", "dot")
+
+    c
+  }
+
+}
+
+
 
 /**
   * Annotations specify where to start rendering.  Currently the first encountered module that matches an annotation
@@ -581,6 +630,7 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "", s
         val topModuleNode = ModuleNode(startModuleName, parentOpt = None)
         processModule("", topModule, topModuleNode, getScope(topModule.name))
         pl(topModuleNode.render)
+        pl("\"Modules Only View Here\" [URL=\"TopLevel.dot.svg\" shape=\"rectangle\"]; \n")
         pl("}")
       case _ =>
         println(s"could not find top module $startModuleName")
@@ -592,6 +642,8 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "", s
   }
 }
 
+
+
 class VisualizerTransform extends Transform {
   override def inputForm: CircuitForm = LowForm
 
@@ -599,7 +651,8 @@ class VisualizerTransform extends Transform {
 
   def show(fileName: String, dotProgram: String = "dot", openProgram: String = "open"): Unit = {
     if(dotProgram != "none") {
-      //noinspection SpellCheckingInspection
+      //noinsp
+      // ection SpellCheckingInspection
       val dotProcessString = s"$dotProgram -Tsvg -O $fileName"
       dotProcessString.!!
 
@@ -653,9 +706,11 @@ class VisualizerTransform extends Transform {
     val modulesSeen = new mutable.HashSet[String]()
 
 
-    //var new_state = state.copy(circuit = state.circuit.copy(modules = state.circuit.modules.map()))
     val pass_remove_gen = new RemoveUselessGenTPass()
     var circuit = pass_remove_gen.run(state.circuit)
+
+    val pass_top_level = new TopLevelModPass(targetDir, nameOfFile = "TopOfVisualizer")
+    pass_top_level.run(state.circuit)
 
     queue += circuit.main // top level visualizer
 
