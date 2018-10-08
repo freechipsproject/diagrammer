@@ -66,3 +66,10 @@ Other programs in that family have not been tested by me but might work as well.
 - Currently only modules (not instances of modules can be annotated)
 - Stretch goal: Generate image just for components that an annotated element depends on.
 - Do this right and use D3 to make prettier animated graphs.
+
+## How Visualizer Works
+Class VisualizerTransform (at the end of the Visualizer.scala program) creates the original graph of the program - it calls on RemoveUselessGenAndT Pass and TopLevelModPass to remove the Gen and T boxes in between elements and to create a high level module relationship overview, respectively. It uses DOT language to create these graphs and writes to files using Java PrintWriter.
+
+The TopLevelModPass currently uses the firrtl.analyses.InstanceGraph to collect instances associated with each module. It is a work in progress though.
+
+Generated files go to the test_run_dir directory.
