@@ -12,7 +12,7 @@ case class ValidIfNode(name: String, parentOpt: Option[DotNode]) extends DotNode
   def render: String = {
     s"""
        |$name [shape = "plaintext" label=<
-       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#FA8072">
        |  <TR>
        |    <TD PORT="in1">&#x25cf;</TD>
        |    <TD PORT="select">validIf?</TD>

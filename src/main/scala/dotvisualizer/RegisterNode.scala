@@ -9,7 +9,7 @@ case class RegisterNode(name: String, parentOpt: Option[DotNode]) extends DotNod
 
   def render: String = {
     s"""struct_$absoluteName [shape="plaintext" label=<
-       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#FFE4B5">
        |  <TR>
        |    <TD PORT="in">${PrimOpNode.BlackDot}</TD>
        |    <TD>$name</TD>

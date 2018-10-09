@@ -19,6 +19,7 @@ case class ModuleNode(name: String, parentOpt: Option[DotNode], var url_string:O
        |subgraph $absoluteName {
        |  label="$name"
        |  URL="${url_string.getOrElse("")}"
+       |  bgcolor="#FFF8DC"
        |  ${inputs.map(_.render).mkString("\n")}
        |  ${outputs.map(_.render).mkString("\n")}
        |  ${children.map(_.render).mkString("\n")}

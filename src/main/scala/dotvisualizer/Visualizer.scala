@@ -10,24 +10,15 @@ import chisel3.internal.InstanceId
 import firrtl.CompilerUtils.getLoweringTransforms
 import firrtl.PrimOps._
 import firrtl._
-import firrtl.analyses.InstanceGraph
 import firrtl.annotations._
 import firrtl.ir._
 import firrtl.passes.Pass
 import firrtl.transforms.BlackBoxSourceHelper
 
-
-import firrtl.Utils._
-import firrtl.Mappers._
-
-
 import scala.collection.mutable
 import sys.process._
 
 //TODO: Chick: Allow specifying where to write dot file
-//TODO: Chick: Allow way to suppress or minimize display of intermediate _T nodes
-//TODO: Chick: Consider merging constants in to muxes and primops, rather than wiring in a node.
-
 //TODO: MONICA: Implement depth
 
 //scalastyle:off magic.number
@@ -577,7 +568,8 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "", s
         pl("rankdir=\"LR\"")
 //        pl(s"graph [splines=ortho];")
         val topModuleNode = ModuleNode(startModuleName, parentOpt = None)
-        processModule("", topModule, topModuleNode, getScope(topModule.name))
+        processModule("", topModule, topModuleNode, Scope(0, 1))
+//        processModule("", topModule, topModuleNode, getScope(topModule.name))
         pl(topModuleNode.render)
         pl("\"Modules Only View Here\" [URL=\"TopLevel.dot.svg\" shape=\"rectangle\"]; \n")
         pl("}")
@@ -626,8 +618,9 @@ class VisualizerTransform extends Transform {
     var doAllGraphs = false
 
     val targetDir = state.annotations.collectFirst { case x : TargetDirAnnotation => x } match {
-      case Some(targetDirAnnotation) => targetDirAnnotation.value + "/"
-      case _ => ""
+      case Some(TargetDirAnnotation(value)) if value.nonEmpty =>
+        if(value.endsWith("/")) value else value + "/"
+      case _ => "./"
     }
 
     val filteredAnnotations = state.annotations.flatMap {
@@ -654,7 +647,6 @@ class VisualizerTransform extends Transform {
     val queue = new mutable.Queue[String]()
     val modulesSeen = new mutable.HashSet[String]()
 
-
     val pass_remove_gen = new RemoveUselessGenTPass()
     var circuit = pass_remove_gen.run(state.circuit)
 
@@ -665,14 +657,15 @@ class VisualizerTransform extends Transform {
 
     while(queue.nonEmpty) {
       val moduleName = queue.dequeue()
-      if (!moduleName.contains(modulesSeen)) {
+      if (!modulesSeen.contains(moduleName)) {
 
-        val pass = new VisualizerPass(filteredAnnotations, targetDir, moduleName)
+        val pass = new VisualizerPass(filteredAnnotations, targetDir, startModuleName = moduleName)
         circuit = pass.run(circuit)
 
         queue ++= pass.subModulesFound.map(module => module.name)
         save(s"$targetDir$moduleName.dot", dotProgram)
       }
+      modulesSeen += moduleName
     }
 
 
@@ -699,10 +692,6 @@ object ToLoFirrtl extends Compiler {
     compileResult.circuit
   }
 }
-
-
-//TODO: (chick) consider clickable image maps as in
-// https://stackoverflow.com/questions/18478559/generate-clickable-dot-graph-for-website
 
 object Visualizer {
   val DepthString       = "Depth"

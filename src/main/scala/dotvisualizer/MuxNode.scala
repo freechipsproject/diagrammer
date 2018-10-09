@@ -19,7 +19,7 @@ case class MuxNode(
   def render: String = {
     s"""
        |$name [shape = "plaintext" label=<
-       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#AFEEEE">
        |  <TR>
        |    <TD PORT="in1">${arg0ValueOpt.getOrElse(PrimOpNode.BlackDot)}</TD>
        |    <TD ROWSPAN="2" PORT="select">a?</TD>

@@ -15,7 +15,7 @@ case class MemNode(name: String, parentOpt: Option[DotNode],
   text.append(
     s"""
       |struct_$absoluteName [shape="plaintext" label=<
-      |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+      |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#DA70D6">
       |  <TR>
       |    <TD>Mem $name </TD>
       |  </TR>

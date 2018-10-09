@@ -32,7 +32,7 @@ class ModuleDotNode private (val graphName: String, val instanceName: String, va
     */
   def render: String = {
     val s = new mutable.StringBuilder()
-    s.append(s"""$graphName [shape= "plaintext" """)
+    s.append(s"""$graphName [shape= "plaintext" href="$moduleName.dot.svg" """)
     s.append(s"""label=<\n""")
     s.append(
       """
