@@ -81,7 +81,7 @@ object VisualizerAnnotation {
     * @return
     */
   def setOpenProgram(program: String): Annotation = {
-    VisualizerAnnotation(CircuitName("Vizualizer"), s"${Visualizer.OpenProgramString}=$program")
+    VisualizerAnnotation(CircuitName("Visualizer"), s"${Visualizer.OpenProgramString}=$program")
   }
 
   /**
@@ -90,7 +90,7 @@ object VisualizerAnnotation {
     * @return
     */
   def setOutputFormat(format: String): Annotation = {
-    VisualizerAnnotation(CircuitName("Vizualizer"), s"${Visualizer.OpenProgramString}=$format")
+    VisualizerAnnotation(CircuitName("Visualizer"), s"${Visualizer.OpenProgramString}=$format")
   }
 
 //  def unapply(a: Annotation): Option[(Named, String)] = a match {
@@ -169,7 +169,7 @@ class RemoveUselessGenTPass() extends Pass {
 
     def collectGenExpr(s: Statement): Option[Statement] = s match {
       case block: Block =>
-        val result = Some(Block(block.stmts.flatMap{substatement =>
+        val result = Some(Block(block.stmts.flatMap{ substatement =>
           collectGenExpr(substatement)
         }))
         result
@@ -209,7 +209,7 @@ class RemoveUselessGenTPass() extends Pass {
     def removeGenStatement(s: Statement): Option[Statement] = {
       s match {
         case block: Block =>
-          val result = Some(Block(block.stmts.flatMap{substatement =>
+          val result = Some(Block(block.stmts.flatMap{ substatement =>
             removeGenStatement(substatement)
           }))
           result
@@ -238,6 +238,81 @@ class RemoveUselessGenTPass() extends Pass {
   }
 }
 
+/**
+  * Represents a module instance in the graph of instances in a circuit.
+  * @param graphName    How `dot` will refer to this node
+  * @param instanceName The instance name within the parent module
+  * @param moduleName   The Module Name
+  */
+class ModuleDotNode private (val graphName: String, val instanceName: String, val moduleName: String) {
+  val children = new mutable.ArrayBuffer[ModuleDotNode]()
+
+  /**
+    * Render this node as a small HTML table with the module name at the top
+    * and each child instance as a row
+    * children are sorted by moduleName then instanceName
+    * @return
+    */
+  def render: String = {
+    val s = new mutable.StringBuilder()
+    s.append(s"""$graphName [shape= "plaintext" """)
+    s.append(s"""label=<\n""")
+    s.append(
+      """
+        |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" >
+        """.stripMargin)
+
+     s.append(
+       s"""
+        |  <TR >
+        |    <TD BGCOLOR="#FFDEAD" > $moduleName </TD>
+        |  </TR>
+        """.stripMargin)
+
+     children.sortBy { child => s"${child.moduleName} ${child.instanceName}" }.foreach { child =>
+       s.append(
+         s"""
+            |  <TR>
+            |    <TD PORT="${child.graphName}" BGCOLOR="#FFF8DC" >${child.instanceName}</TD>
+            |  </TR>
+        """.stripMargin)
+     }
+
+     s.append(
+       s"""
+        |</TABLE>>];
+        |
+      """.stripMargin)
+    s.toString
+  }
+}
+
+/**
+  * Is the factory for ModuleDotNode creation
+  */
+object ModuleDotNode {
+  var nodeCounter: Int = 0
+
+  /**
+    * This factor created a new unique dot graph node name for this instance
+    * @param instanceName The instance
+    * @param moduleName   The module
+    * @return
+    */
+  def apply(instanceName: String, moduleName: String): ModuleDotNode = {
+    nodeCounter += 1
+    new ModuleDotNode(s"module_$nodeCounter", instanceName, moduleName)
+  }
+}
+
+/**
+  * Creates a high level graph that shows the instances in the circuit and their Module names
+  * @param targetDir  directory where dot graph will end up
+  * @param nameOfFile file name in that directory
+  */
+//
+//TODO: Make even more links from these graph nodes back to the other generated graphs
+//
 class TopLevelModPass(targetDir: String, nameOfFile: String) extends Pass {
 
   def save(fileName: String, dotProgram: String = "dot"): Unit = {
@@ -248,38 +323,82 @@ class TopLevelModPass(targetDir: String, nameOfFile: String) extends Pass {
     }
   }
 
-  def run (c:Circuit) : Circuit = {
+  def run(c: Circuit) : Circuit = {
     val TopLevel = "TopLevel"
+
+    val moduleNodes = new mutable.ArrayBuffer[ModuleDotNode]()
+    val connections = new mutable.ArrayBuffer[(String, String)]()
+
     val printFile = new PrintWriter(new java.io.File(s"$targetDir$TopLevel.dot"))
-    printFile.write("digraph " + TopLevel + " { rankdir=\"LR\" \n node [shape=\"rectangle\"]; \n")
+    printFile.write("digraph " + TopLevel + " { rankdir=\"TB\" \n node [shape=\"rectangle\"]; \n")
+    printFile.write("rankdir=\"LR\" \n")
 
 
     //statements that have modules, have a list of module names,
 
-    var relations = new mutable.HashMap[String, mutable.HashSet[WDefInstance]]
+    val top = WDefInstance(c.main, c.main)
 
-    c.modules.map {
-      case m: Module =>
-        var insts = new mutable.HashSet[WDefInstance]
-        firrtl.analyses.InstanceGraph.collectInstances(insts)(m.body)
-        relations.put(m.name, insts)
-        m
-    }
+    /**
+      * Find the given instance in the Module Hierarchy
+      * This is almost certainly inefficient. Should not have to map the modules every time
+      * @param instance instance being searched for
+      * @return
+      */
+    def findModuleByName(instance: WDefInstance): Set[WDefInstance] = {
+      c.modules.find(m => m.name == instance.module) match {
+        case Some(module) =>
+          val set = new mutable.HashSet[WDefInstance]
+          module map InstanceGraph.collectInstances(set)
+          set.toSet
 
-    for (entry <- relations) {
-      for (submodule <- entry._2) {
-        printFile.write(entry._1)
-        printFile.write("-> ")
-        printFile.write(submodule.name)
-        printFile.write(" ")
-        printFile.write(" \n")
+        case None => Set.empty[WDefInstance]
       }
     }
 
+    /**
+      * Walk through the instance graph adding ModuleDotNodes and a record of their connections
+      * @param wDefInstance start instance
+      * @param path         underscore separated path to the start instance
+      * @return
+      */
+    def walk(wDefInstance: WDefInstance, path: String = ""): ModuleDotNode = {
+      def expand(name: String): String = {
+        if(path.isEmpty) name else path + "_" + name
+      }
+
+      val dotNode = ModuleDotNode(wDefInstance.name, wDefInstance.module)
+      moduleNodes += dotNode
+
+      val children = findModuleByName(wDefInstance)
+      children.foreach { child =>
+        val childNode = walk(child, expand(wDefInstance.name))
+        connections.append((dotNode.graphName + ":" + childNode.graphName, childNode.graphName))
+        dotNode.children += childNode
+      }
+
+      dotNode
+    }
+
+    // Start walk from the top of the graph
+    walk(top)
+
+    // Render all the collected nodes
+    for(mod <- moduleNodes) {
+      printFile.append(mod.render)
+    }
+
+    // Render their connections
+    for((parent, child) <- connections) {
+      printFile.write(s"$parent -> $child\n")
+    }
+
+    // Add the back button
     printFile.write("\"Back\" [URL=\"" + nameOfFile + ".dot.svg\" ]")
     printFile.write("}")
+
+    // Finish writing the file
     printFile.close()
-    save(s"$targetDir$TopLevel.dot", "dot")
+    save(s"$targetDir$TopLevel.dot")
 
     c
   }
