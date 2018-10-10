@@ -2,8 +2,6 @@
 
 package dotvisualizer.dotnodes
 
-import dotvisualizer.dotnodes.DotNode
-
 object PrimOpNode {
   /* the pseudoHash is necessary because case classes with identical args have identical hashes */
   var pseudoHash: Long = 0

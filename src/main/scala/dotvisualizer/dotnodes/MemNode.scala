@@ -2,7 +2,6 @@
 
 package dotvisualizer.dotnodes
 
-import dotvisualizer.dotnodes.DotNode
 import firrtl.ir.DefMemory
 
 import scala.collection.mutable

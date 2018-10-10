@@ -51,7 +51,7 @@ class VizModA(annoParam: Int) extends Module with VisualizerAnnotator {
   modB2.io.in := io.in
   io.out := modC.io.out + modB.io.out + modB2.io.out
 
-    visualize(this, depth = 1)
+//    visualize(this, depth = 1)
 }
 
 class VizModB(widthB: Int) extends Module with VisualizerAnnotator{

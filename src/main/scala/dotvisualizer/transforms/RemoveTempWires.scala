@@ -1,0 +1,143 @@
+// See LICENSE for license details.
+
+package dotvisualizer.transforms
+
+import dotvisualizer.ToLoFirrtl
+import firrtl.ir._
+import firrtl.passes.Pass
+import firrtl.{Parser, WRef, WSubField, WSubIndex}
+
+import scala.collection.mutable
+
+class RemoveTempWires() extends Pass {
+
+
+  /**
+    * Foreach Module in a firrtl circuit
+    *   Find all the DefNodes with temp names and save their expression
+    *   Remove all the found dev nodes
+    *   recursively replace their references with their associated expression
+    * @param c circuit to be altered
+    * @return
+    */
+  //scalastyle:off method.length cyclomatic.complexity
+  def run(c: Circuit): Circuit = {
+
+    /**
+      * removes all references to temp wires in module
+      * @param module the module to be altered
+      * @return
+      */
+    def removeTempWiresFromModule(module: Module): Module = {
+
+      val toRemove = new mutable.HashMap[String, Expression]()
+
+      /**
+        * Saves reference to the expression associated
+        * with a temp wire associated with a Node statement
+        * @param s
+        */
+      def collectTempExpressions(s: Statement): Unit = s match {
+        case block: Block =>
+          block.stmts.foreach { substatement =>
+            collectTempExpressions(substatement)
+          }
+
+        case node: DefNode =>
+          if (node.name.startsWith(RemoveTempWires.GenPrefix) || node.name.startsWith(RemoveTempWires.TempPrefix)) {
+
+            if (toRemove.contains(node.name)) {
+              println(s"Houston we have a problem, ${node.name} already marked for removal")
+            }
+            toRemove(node.name) = node.value
+            None
+          }
+        case _ => //do nothing
+      }
+
+      /**
+        * recursively find any references to temp wires in the expression and replace the
+        * references with the associated expression
+        * @param e expression to be altered
+        * @return
+        */
+      def removeGen(e: Expression): Expression = {
+        e match {
+          case wire: WRef =>
+            if ((wire.name.startsWith(RemoveTempWires.GenPrefix) ||
+                    wire.name.startsWith(RemoveTempWires.TempPrefix)) && toRemove.contains(wire.name)) {
+              val new_node = toRemove(wire.name)
+              removeGen(new_node)
+            } else {
+              wire
+            }
+          case wire: WSubField =>
+            if ((wire.name.startsWith(RemoveTempWires.GenPrefix) ||
+                    wire.name.startsWith(RemoveTempWires.TempPrefix)) && toRemove.contains(wire.name)) {
+              val new_node = toRemove(wire.name)
+              removeGen(new_node)
+            } else {
+              wire
+            }
+          case wire: WSubIndex =>
+            wire.mapExpr(removeGen)
+          case ee => ee.mapExpr(removeGen)
+        }
+      }
+
+      /**
+        * Removes node definition statements for temp wires
+        * @param s statement to be altered
+        * @return
+        */
+      def removeGenStatement(s: Statement): Option[Statement] = {
+        s match {
+          case block: Block =>
+            val result = Some(Block(block.stmts.flatMap { substatement =>
+              removeGenStatement(substatement)
+            }))
+            result
+          case node: DefNode =>
+            if (node.name.startsWith(RemoveTempWires.GenPrefix) || node.name.startsWith(RemoveTempWires.TempPrefix)) {
+              None
+            } else {
+              Some(node.mapExpr(removeGen))
+            }
+          case other: Statement =>
+            Some(other.mapExpr(removeGen))
+          case _ => Some(s) //do nothing
+        }
+      }
+
+      collectTempExpressions(module.body)
+      val moduleWithTempExpressionsRemmoved = removeGenStatement(module.body)
+      module.copy(body = moduleWithTempExpressionsRemmoved.get)
+    }
+
+    val newModules = c.modules.map {
+      case m: Module => removeTempWiresFromModule(m)
+    }
+
+    Circuit(c.info, newModules, c.main)
+  }
+}
+
+object RemoveTempWires  {
+  val GenPrefix = "_GEN_"
+  val TempPrefix = "_T_"
+
+  def main(args: Array[String]): Unit = {
+    args.headOption match {
+      case Some(fileName) =>
+        val firrtlSource = io.Source.fromFile(fileName).getLines().mkString("\n")
+        val firrtl = ToLoFirrtl.lower(Parser.parse(firrtlSource))
+
+        val grapher = new RemoveTempWires()
+
+        val newCircuit = grapher.run(firrtl)
+        println(s"${newCircuit.serialize}")
+
+      case _ =>
+    }
+  }
+}
