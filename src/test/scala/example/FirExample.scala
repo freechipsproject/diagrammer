@@ -31,23 +31,16 @@ class FirExampleSpec extends FreeSpec with Matchers {
 //  }
 
   """
-    |Visualizer is an example of a module that has two sub-modules A and B who both instantiate their
-    |own instances of module C.  This highlights the difference between specific and general
-    |annotation scopes
-  """.stripMargin - {
+    |This is an example of an FIR circuit which has a lot of elements in a single module
+  """.stripMargin  in {
 
-    """
-      |annotations are not resolved at after circuit elaboration,
-      |that happens only after emit has been called on circuit""".stripMargin in {
-
-      Driver.execute(
-        Array("--target-dir", "test_run_dir", "--compiler", "low"),
-        () => new MyManyDynamicElementVecFir(10)
-      ) match {
-        case ChiselExecutionSuccess(Some(_), _, _) =>
-        case _ =>
-          throw new Exception("bad parse")
-      }
+    Driver.execute(
+      Array("--target-dir", "test_run_dir/fir_example", "--top-name", "fir_example", "--compiler", "low"),
+      () => new MyManyDynamicElementVecFir(10)
+    ) match {
+      case ChiselExecutionSuccess(Some(_), _, _) =>
+      case _ =>
+        throw new Exception("bad parse")
     }
   }
 }
