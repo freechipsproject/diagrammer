@@ -679,21 +679,6 @@ class VisualizerTransform extends Transform {
   }
 }
 
-object ToLoFirrtl extends Compiler {
-  override def emitter: Emitter = new LowFirrtlEmitter
-  override def transforms: Seq[Transform] = {
-    getLoweringTransforms(ChirrtlForm, LowForm) ++
-      Seq(new LowFirrtlOptimization, new BlackBoxSourceHelper)
-  }
-
-  def lower(c: Circuit): Circuit = {
-
-    val compileResult = compileAndEmit(firrtl.CircuitState(c, ChirrtlForm))
-
-    compileResult.circuit
-  }
-}
-
 object Visualizer {
   val DepthString       = "Depth"
   val DotProgramString  = "DotProgram"

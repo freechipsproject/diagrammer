@@ -15,9 +15,8 @@ import firrtl.transforms.BlackBoxSourceHelper
 object ToLoFirrtl extends Compiler {
   override def emitter: Emitter = new LowFirrtlEmitter
   override def transforms: Seq[Transform] = {
-    val t = getLoweringTransforms(ChirrtlForm, LowForm) ++
-      Seq(new LowFirrtlOptimization, new BlackBoxSourceHelper, new FixupOps)
-    t
+    getLoweringTransforms(ChirrtlForm, LowForm) ++
+            Seq(new LowFirrtlOptimization, new BlackBoxSourceHelper)
   }
 
   def lower(c: Circuit): Circuit = {
