@@ -7,6 +7,7 @@ import java.io.PrintWriter
 import chisel3.experimental
 import chisel3.experimental.{ChiselAnnotation, RunFirrtlTransform}
 import chisel3.internal.InstanceId
+import dotvisualizer.dotnodes._
 import firrtl.CompilerUtils.getLoweringTransforms
 import firrtl.PrimOps._
 import firrtl._

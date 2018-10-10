@@ -1,6 +1,6 @@
 // See LICENSE for license details.
 
-package dotvisualizer
+package dotvisualizer.dotnodes
 
 case class LiteralNode(name: String, value: BigInt, parentOpt: Option[DotNode]) extends DotNode {
   def render: String = {

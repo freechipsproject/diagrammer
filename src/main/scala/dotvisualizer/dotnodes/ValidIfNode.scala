@@ -1,8 +1,6 @@
 // See LICENSE for license details.
 
-package dotvisualizer
-
-import java.io.{File, PrintWriter}
+package dotvisualizer.dotnodes
 
 case class ValidIfNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
   val select: String = s"$name:select"

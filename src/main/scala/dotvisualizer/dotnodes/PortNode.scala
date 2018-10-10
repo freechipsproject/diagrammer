@@ -1,6 +1,6 @@
 // See LICENSE for license details.
 
-package dotvisualizer
+package dotvisualizer.dotnodes
 
 case class PortNode(name: String, parentOpt: Option[DotNode], rank: Int=10) extends DotNode {
   def render: String = {

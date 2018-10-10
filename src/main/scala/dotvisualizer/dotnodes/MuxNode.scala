@@ -1,6 +1,6 @@
 // See LICENSE for license details.
 
-package dotvisualizer
+package dotvisualizer.dotnodes
 
 import java.io.{File, PrintWriter}
 
@@ -34,7 +34,7 @@ case class MuxNode(
 
 }
 
-import sys.process._
+import scala.sys.process._
 
 object MuxNode {
   //noinspection ScalaStyle

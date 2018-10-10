@@ -1,7 +1,8 @@
 // See LICENSE for license details.
 
-package dotvisualizer
+package dotvisualizer.dotnodes
 
+import dotvisualizer.dotnodes.DotNode
 import firrtl.ir.DefMemory
 
 import scala.collection.mutable
