@@ -1,7 +1,8 @@
 // See LICENSE for license details.
 
-package dotvisualizer
+package dotvisualizer.dotnodes
 
+import dotvisualizer.dotnodes.DotNode
 import firrtl.ir.DefMemory
 
 import scala.collection.mutable
@@ -15,7 +16,7 @@ case class MemNode(name: String, parentOpt: Option[DotNode],
   text.append(
     s"""
       |struct_$absoluteName [shape="plaintext" label=<
-      |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+      |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#DA70D6">
       |  <TR>
       |    <TD>Mem $name </TD>
       |  </TR>

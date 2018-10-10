@@ -1,13 +1,13 @@
 // See LICENSE for license details.
 
-package dotvisualizer
+package dotvisualizer.dotnodes
 
 import java.io.{File, PrintWriter}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-case class ModuleNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
+case class ModuleNode(name: String, parentOpt: Option[DotNode], var url_string:Option[String]= Some("TopOfVisualizer.dot.svg")) extends DotNode {
   val inputs: ArrayBuffer[DotNode] = new ArrayBuffer()
   val outputs: ArrayBuffer[DotNode] = new ArrayBuffer()
   val namedNodes: mutable.HashMap[String, DotNode] = new mutable.HashMap()
@@ -18,6 +18,8 @@ case class ModuleNode(name: String, parentOpt: Option[DotNode]) extends DotNode 
     val s = s"""
        |subgraph $absoluteName {
        |  label="$name"
+       |  URL="${url_string.getOrElse("")}"
+       |  bgcolor="#FFF8DC"
        |  ${inputs.map(_.render).mkString("\n")}
        |  ${outputs.map(_.render).mkString("\n")}
        |  ${children.map(_.render).mkString("\n")}
@@ -58,7 +60,7 @@ case class ModuleNode(name: String, parentOpt: Option[DotNode]) extends DotNode 
   }
 }
 
-import sys.process._
+import scala.sys.process._
 
 //noinspection ScalaStyle
 object ModuleNode {

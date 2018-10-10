@@ -7,18 +7,20 @@ import java.io.PrintWriter
 import chisel3.experimental
 import chisel3.experimental.{ChiselAnnotation, RunFirrtlTransform}
 import chisel3.internal.InstanceId
+import dotvisualizer.dotnodes._
+import firrtl.CompilerUtils.getLoweringTransforms
 import firrtl.PrimOps._
 import firrtl._
 import firrtl.annotations._
 import firrtl.ir._
 import firrtl.passes.Pass
+import firrtl.transforms.BlackBoxSourceHelper
 
 import scala.collection.mutable
 import sys.process._
 
 //TODO: Chick: Allow specifying where to write dot file
-//TODO: Chick: Allow way to suppress or minimize display of intermediate _T nodes
-//TODO: Chick: Consider merging constants in to muxes and primops, rather than wiring in a node.
+//TODO: MONICA: Implement depth
 
 //scalastyle:off magic.number
 /**
@@ -49,7 +51,18 @@ object VisualizerAnnotation {
     * @return
     */
   def setDotProgram(program: String): Annotation = {
-    VisualizerAnnotation(CircuitName("Vizualizer"), s"${Visualizer.DotProgramString}=$program")
+    VisualizerAnnotation(CircuitName("Visualizer"), s"${Visualizer.DotProgramString}=$program")
+  }
+
+  /**
+    * Use this to set the program to create multiple files, one for each mod.  dot and fdp seem to work well, others
+    * might too.  Default is dot
+    * @param program program to create png
+    * @return
+    */
+  def setVisualizeAll(program: Boolean): Annotation = {
+    VisualizerAnnotation(CircuitName("Visualizer"), s"${Visualizer.MultiGraph}=$program")
+
   }
 
   /**
@@ -60,7 +73,7 @@ object VisualizerAnnotation {
     * @return
     */
   def setOpenProgram(program: String): Annotation = {
-    VisualizerAnnotation(CircuitName("Vizualizer"), s"${Visualizer.OpenProgramString}=$program")
+    VisualizerAnnotation(CircuitName("Visualizer"), s"${Visualizer.OpenProgramString}=$program")
   }
 
   /**
@@ -69,7 +82,7 @@ object VisualizerAnnotation {
     * @return
     */
   def setOutputFormat(format: String): Annotation = {
-    VisualizerAnnotation(CircuitName("Vizualizer"), s"${Visualizer.OutputFormatString}=$format")
+    VisualizerAnnotation(CircuitName("Visualizer"), s"${Visualizer.OpenProgramString}=$format")
   }
 
 //  def unapply(a: Annotation): Option[(Named, String)] = a match {
@@ -139,6 +152,83 @@ trait VisualizerAnnotator {
   }
 }
 
+class RemoveUselessGenTPass() extends Pass {
+
+  val toRemove = new mutable.HashMap[String, Expression]()
+
+  //scalastyle:off method.length cyclomatic.complexity
+  def run(c: Circuit): Circuit = {
+
+    def collectGenExpr(s: Statement): Option[Statement] = s match {
+      case block: Block =>
+        val result = Some(Block(block.stmts.flatMap{ substatement =>
+          collectGenExpr(substatement)
+        }))
+        result
+
+      case node: DefNode =>
+        if (node.name.startsWith("_GEN") || node.name.startsWith("_T")) {
+          toRemove(node.name) = node.value
+          None
+        } else {
+          Some(node)
+        }
+      case _ => Some(s) //do nothing
+    }
+
+    def removeGen(e: Expression): Expression = {
+      e match {
+        case wire: WRef =>
+          if ((wire.name.startsWith("_GEN") || wire.name.startsWith("_T")) && toRemove.contains(wire.name)) {
+            val new_node = toRemove(wire.name)
+            removeGen(new_node)
+          } else {
+            wire
+          }
+        case wire: WSubField =>
+          if ((wire.name.startsWith("_GEN") || wire.name.startsWith("_T")) && toRemove.contains(wire.name)) {
+            val new_node = toRemove(wire.name)
+            removeGen(new_node)
+          } else {
+            wire
+          }
+        case wire: WSubIndex =>
+          wire.mapExpr(removeGen)
+        case ee => ee.mapExpr(removeGen)
+      }
+    }
+
+    def removeGenStatement(s: Statement): Option[Statement] = {
+      s match {
+        case block: Block =>
+          val result = Some(Block(block.stmts.flatMap{ substatement =>
+            removeGenStatement(substatement)
+          }))
+          result
+        case node: DefNode =>
+          if (node.name.startsWith("_GEN") || node.name.startsWith("_T")) {
+            None
+          } else {
+            Some(node)
+          }
+        case other: Statement =>
+          Some(other.mapExpr(removeGen))
+        case _ => Some(s) //do nothing
+      }
+    }
+
+    var newModules = c.modules.map {
+      case m: Module => Module(m.info, m.name, m.ports, collectGenExpr(m.body).get)
+    }
+
+    newModules = newModules.map { m: Module =>
+        val new_body =  removeGenStatement(m.body).get
+        Module(m.info, m.name, m.ports, new_body)
+    }
+
+    Circuit(c.info, newModules, c.main)
+  }
+}
 /**
   * Annotations specify where to start rendering.  Currently the first encountered module that matches an annotation
   * will start the rendering, rendering continues per the depth specified in the annotation.
@@ -148,18 +238,16 @@ trait VisualizerAnnotator {
   * @param annotations  where to start rendering
   */
 //noinspection ScalaStyle
-class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") extends Pass {
+class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "", startModuleName : String) extends Pass {
+
+  val subModulesFound = new mutable.HashSet[DefModule]()
 
   def run (c:Circuit) : Circuit = {
     val nameToNode: mutable.HashMap[String, DotNode] = new mutable.HashMap()
 
-    val printFile = new PrintWriter(new java.io.File(s"$targetDir${c.main}.dot"))
+    val printFile = new PrintWriter(new java.io.File(s"$targetDir$startModuleName.dot"))
     def pl(s: String): Unit = {
       printFile.println(s.split("\n").mkString("\n"))
-    }
-
-    def getCode(e: Expression): String = {
-      if(e.hashCode() > 0 ) e.hashCode().toString else "x" + e.hashCode().abs
     }
 
     /**
@@ -301,36 +389,35 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
 
       def processExpression(expression: firrtl.ir.Expression): String = {
         def resolveRef(firrtlName: String, dotName: String): String = {
-          nameToNode.get(firrtlName) match {
-            case Some(node) =>
-              node.asRhs
-            case _ => dotName
-          }
+            nameToNode.get(firrtlName) match {
+              case Some(node) =>
+                  node.asRhs
+              case _ => dotName
+            }
         }
+
 
         val result = expression match {
           case mux: firrtl.ir.Mux =>
             val arg0ValueOpt = getLiteralValue(mux.tval)
             val arg1ValueOpt = getLiteralValue(mux.fval)
 
-            val name = expand("mux")
-
-            val muxNode = MuxNode(s"${name}_${getCode(mux)}", Some(moduleNode), arg0ValueOpt, arg1ValueOpt)
+            val muxNode = MuxNode(s"mux_${mux.hashCode().abs}", Some(moduleNode), arg0ValueOpt, arg1ValueOpt)
             moduleNode += muxNode
             moduleNode.connect(muxNode.select, processExpression(mux.cond))
             if(arg0ValueOpt.isEmpty) moduleNode.connect(muxNode.in1, processExpression(mux.tval))
             if(arg1ValueOpt.isEmpty) moduleNode.connect(muxNode.in2, processExpression(mux.fval))
             muxNode.asRhs
           case WRef(name, _, _, _) =>
-            resolveRef(getFirrtlName(name), expand(name))
+              resolveRef(getFirrtlName(name), expand(name))
           case Reference(name, _) =>
-            resolveRef(getFirrtlName(name), expand(name))
+              resolveRef(getFirrtlName(name), expand(name))
           case subfield: WSubField =>
             resolveRef(getFirrtlName(subfield.serialize), expand(subfield.serialize))
           case subIndex: WSubIndex =>
             resolveRef(getFirrtlName(subIndex.serialize), expand(subIndex.serialize))
           case validIf : ValidIf =>
-            val validIfNode = ValidIfNode(s"validif_${getCode(validIf)}", Some(moduleNode))
+            val validIfNode = ValidIfNode(s"validif_${validIf.hashCode().abs}", Some(moduleNode))
             moduleNode += validIfNode
             moduleNode.connect(validIfNode.select, processExpression(validIf.cond))
             moduleNode.connect(validIfNode.in1, processExpression(validIf.value))
@@ -357,7 +444,7 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
         def showPorts(dir: firrtl.ir.Direction): Unit = {
           module.ports.foreach {
             case port if port.direction == dir =>
-              val portNode = PortNode(port.name, Some(moduleNode))
+              val portNode = PortNode(port.name, Some(moduleNode), if(moduleNode.parentOpt.isEmpty) 0 else 1)
               nameToNode(getFirrtlName(port.name)) = portNode
               moduleNode += portNode
             case _ => None
@@ -404,10 +491,18 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
             moduleNode.connect(lhsName, processExpression(con.expr))
 
           case WDefInstance(_, instanceName, moduleName, _) =>
+
             val subModule = findModule(moduleName, c)
             val newPrefix = if(modulePrefix.isEmpty) instanceName else modulePrefix + "." + instanceName
-            val subModuleNode = ModuleNode(instanceName, Some(moduleNode))
+            //val url_string = "file:///Users/monica/ChiselProjects/visualizer/src/test/scala/dotvisualizer/" +
+            //  info.toString.drop(3).split(" ").head //name of source code file
+            //val line_num = info.toString().drop(3).split(" ").tail(0).split(":").head //line # in source code file
+            //val subModuleNode = ModuleNode(instanceName, Some(moduleNode), Some(url_string + "#line" + line_num))
+            val moduleNameParsed = moduleName.split("/").last
+            val subModuleNode = ModuleNode(instanceName, Some(moduleNode), Some(moduleNameParsed + ".dot.svg"))
             moduleNode += subModuleNode
+
+            subModulesFound += subModule
 
             processModule(newPrefix, subModule, subModuleNode, getScope(moduleName, scope))
 
@@ -431,8 +526,6 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
           // let everything else slide
         }
       }
-
-      // println(s"Scope is $scope")
 
       myModule match {
         case module: firrtl.ir.Module =>
@@ -470,16 +563,19 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
       }
     }
 
-    findModule(c.main, c) match {
+    findModule(startModuleName, c) match {
       case topModule: DefModule =>
         pl(s"digraph ${topModule.name} {")
+        pl("rankdir=\"LR\"")
 //        pl(s"graph [splines=ortho];")
-        val topModuleNode = ModuleNode(c.main, parentOpt = None)
-        processModule("", topModule, topModuleNode, getScope(topModule.name))
+        val topModuleNode = ModuleNode(startModuleName, parentOpt = None)
+        processModule("", topModule, topModuleNode, Scope(0, 1))
+//        processModule("", topModule, topModuleNode, getScope(topModule.name))
         pl(topModuleNode.render)
+        pl("\"Modules Only View Here\" [URL=\"TopLevel.dot.svg\" shape=\"rectangle\"]; \n")
         pl("}")
       case _ =>
-        println(s"could not find top module ${c.main}")
+        println(s"could not find top module $startModuleName")
     }
 
     printFile.close()
@@ -488,6 +584,8 @@ class VisualizerPass(val annotations: Seq[Annotation], targetDir: String = "") e
   }
 }
 
+
+
 class VisualizerTransform extends Transform {
   override def inputForm: CircuitForm = LowForm
 
@@ -495,7 +593,8 @@ class VisualizerTransform extends Transform {
 
   def show(fileName: String, dotProgram: String = "dot", openProgram: String = "open"): Unit = {
     if(dotProgram != "none") {
-      //noinspection SpellCheckingInspection
+      //noinsp
+      // ection SpellCheckingInspection
       val dotProcessString = s"$dotProgram -Tsvg -O $fileName"
       dotProcessString.!!
 
@@ -506,13 +605,23 @@ class VisualizerTransform extends Transform {
     }
   }
 
+  def save(fileName: String, dotProgram: String = "dot"): Unit = {
+    if(dotProgram != "none") {
+      //noinspection SpellCheckingInspection
+      val dotProcessString = s"$dotProgram -Tsvg -O $fileName"
+      dotProcessString.!!
+    }
+  }
+
   override def execute(state: CircuitState): CircuitState = {
     var dotProgram = "dot"
     var openProgram = "open"
+    var doAllGraphs = false
 
     val targetDir = state.annotations.collectFirst { case x : TargetDirAnnotation => x } match {
-      case Some(targetDirAnnotation) => targetDirAnnotation.value + "/"
-      case _ => ""
+      case Some(TargetDirAnnotation(value)) if value.nonEmpty =>
+        if(value.endsWith("/")) value else value + "/"
+      case _ => "./"
     }
 
     val filteredAnnotations = state.annotations.flatMap {
@@ -525,33 +634,76 @@ class VisualizerTransform extends Transform {
           openProgram = value.split("=", 2).last.trim
           None
         }
+        else if(value.startsWith(Visualizer.MultiGraph)) {
+          //graph all graphs
+          doAllGraphs = true
+          None
+        }
         else {
           Some(annotation)
         }
       case _ => None
     }
 
-    new VisualizerPass(filteredAnnotations, targetDir).run(state.circuit)
+    val queue = new mutable.Queue[String]()
+    val modulesSeen = new mutable.HashSet[String]()
+
+    val pass_remove_gen = new RemoveUselessGenTPass()
+    var circuit = pass_remove_gen.run(state.circuit)
+
+    val pass_top_level = new ModuleLevelGrapher(targetDir, backFileName = "TopOfVisualizer")
+    pass_top_level.run(state.circuit)
+
+    queue += circuit.main // top level visualizer
+
+    while(queue.nonEmpty) {
+      val moduleName = queue.dequeue()
+      if (!modulesSeen.contains(moduleName)) {
+
+        val pass = new VisualizerPass(filteredAnnotations, targetDir, startModuleName = moduleName)
+        circuit = pass.run(circuit)
+
+        queue ++= pass.subModulesFound.map(module => module.name)
+        save(s"$targetDir$moduleName.dot", dotProgram)
+      }
+      modulesSeen += moduleName
+    }
+
 
     val fileName = s"$targetDir${state.circuit.main}.dot"
 
-    show(fileName, dotProgram = dotProgram, openProgram = openProgram)
+    show(fileName, dotProgram, openProgram)
+
 
     state
   }
 }
 
-//TODO: (chick) consider clickable image maps as in
-// https://stackoverflow.com/questions/18478559/generate-clickable-dot-graph-for-website
+object ToLoFirrtl extends Compiler {
+  override def emitter: Emitter = new LowFirrtlEmitter
+  override def transforms: Seq[Transform] = {
+    getLoweringTransforms(ChirrtlForm, LowForm) ++
+      Seq(new LowFirrtlOptimization, new BlackBoxSourceHelper)
+  }
+
+  def lower(c: Circuit): Circuit = {
+
+    val compileResult = compileAndEmit(firrtl.CircuitState(c, ChirrtlForm))
+
+    compileResult.circuit
+  }
+}
 
 object Visualizer {
-  val DepthString        = "Depth"
-  val DotProgramString   = "DotProgram"
-  val OpenProgramString  = "OpenProgram"
-  val OutputFormatString = "OutputFormat"
+  val DepthString       = "Depth"
+  val DotProgramString  = "DotProgram"
+  val OpenProgramString = "OpenProgram"
+  val OutputFormat      = "OutputFormat"
+  val MultiGraph        = "Multigraph"
 
   def run(
     fileName     : String,
+    // dotProgram   : String = "fdp",
     dotProgram   : String = "dot",
     openProgram  : String = "open",
     outputFormat : String = "svg"
@@ -561,13 +713,15 @@ object Visualizer {
 
     val ast = Parser.parse(sourceFirrtl)
 
+
     val loweredAst = ToLoFirrtl.lower(ast)
     val annotations = AnnotationSeq(
       Seq(
-        VisualizerAnnotation(CircuitName(ast.main), depth = 10),
+        VisualizerAnnotation(CircuitName("Visualizer")),
         VisualizerAnnotation.setDotProgram(dotProgram),
         VisualizerAnnotation.setOpenProgram(openProgram),
-        VisualizerAnnotation.setOutputFormat(outputFormat)
+        VisualizerAnnotation.setOutputFormat(outputFormat),
+        VisualizerAnnotation.setVisualizeAll(true)
       )
     )
     val circuitState = CircuitState(loweredAst, LowForm, annotations)
@@ -597,3 +751,4 @@ object Visualizer {
     }
   }
 }
+

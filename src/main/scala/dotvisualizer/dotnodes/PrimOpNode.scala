@@ -1,6 +1,8 @@
 // See LICENSE for license details.
 
-package dotvisualizer
+package dotvisualizer.dotnodes
+
+import dotvisualizer.dotnodes.DotNode
 
 object PrimOpNode {
   /* the pseudoHash is necessary because case classes with identical args have identical hashes */
@@ -28,7 +30,7 @@ case class BinaryOpNode(
   def render: String ={
     s"""
        |$absoluteName [shape = "plaintext" label=<
-       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#D8BFD8">
        |  <TR>
        |    <TD PORT="in1">${arg0ValueOpt.getOrElse(PrimOpNode.BlackDot)}</TD>
        |    <TD ROWSPAN="2" > $name </TD>
@@ -50,7 +52,7 @@ case class UnaryOpNode(name: String, parentOpt: Option[DotNode]) extends DotNode
   def render: String ={
     s"""
        |$absoluteName [shape = "plaintext" label=<
-       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#D8BFD8">
        |  <TR>
        |    <TD PORT="in1">&#x25cf;</TD>
        |    <TD > $name </TD>
@@ -69,7 +71,7 @@ case class OneArgOneParamOpNode(name: String, parentOpt: Option[DotNode], value:
   def render: String ={
     s"""
        |$absoluteName [shape = "plaintext" label=<
-       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#D8BFD8">
        |  <TR>
        |    <TD PORT="in1">&#x25cf;</TD>
        |    <TD ROWSPAN="2" > $name </TD>
@@ -92,7 +94,7 @@ case class OneArgTwoParamOpNode(
   def render: String ={
     s"""
        |$absoluteName [shape = "plaintext" label=<
-       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4">
+       |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#D8BFD8">
        |  <TR>
        |    <TD PORT="in1">&#x25cf;</TD>
        |    <TD ROWSPAN="2" > $name </TD>

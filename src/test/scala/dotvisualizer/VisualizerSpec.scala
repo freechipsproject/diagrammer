@@ -43,10 +43,15 @@ class VizModA(annoParam: Int) extends Module with VisualizerAnnotator {
     val out = Output(UInt())
   })
   val modC = Module(new VizModC(16))
-  modC.io.in := io.in
-  io.out := modC.io.out
+  val modB = Module(new VizModB(16))
+  val modB2 = Module(new VizModB(16))
 
-    visualize(this, depth = 3)
+  modC.io.in := io.in
+  modB.io.in := io.in
+  modB2.io.in := io.in
+  io.out := modC.io.out + modB.io.out + modB2.io.out
+
+    visualize(this, depth = 1)
 }
 
 class VizModB(widthB: Int) extends Module with VisualizerAnnotator{
@@ -77,8 +82,8 @@ class TopOfVisualizer extends Module with VisualizerAnnotator {
   io.memOut := DontCare
 
   val modA = Module(new VizModA(64))
-//  val modB = Module(new VizModB(32))
-
+  val modB = Module(new VizModB(32))
+  val modC = Module(new VizModC(48))
 
 
   when(io.select) {
@@ -92,13 +97,16 @@ class TopOfVisualizer extends Module with VisualizerAnnotator {
 
   modA.io.in := x
 
-  y := modA.io.out + io.in2
+  y := modA.io.out + io.in2 + modB.io.out + modC.io.out
   io.out := y
+
+  modB.io.in := x
+  modC.io.in := x
 
   /**
     * Play with the depth over the range 0 to 3, to see how it affects rendering
     */
-  visualize(this, depth = 3)
+  visualize(this, depth = 9)
 }
 
 class VisualizerTester(c: TopOfVisualizer) extends PeekPokeTester(c) {
@@ -119,7 +127,11 @@ class AnnotatingVisualizerSpec extends FreeSpec with Matchers {
       |annotations are not resolved at after circuit elaboration,
       |that happens only after emit has been called on circuit""".stripMargin in {
 
-      iotesters.Driver.execute(Array("--compiler", "low"), () => new TopOfVisualizer) { c =>
+      iotesters.Driver.execute(
+        Array("--compiler", "low",
+          "--target-dir", "test_run_dir/visualizer_test", "--top-name", "test"),
+        () => new TopOfVisualizer
+      ) { c =>
         new VisualizerTester(c)
       }
     }
