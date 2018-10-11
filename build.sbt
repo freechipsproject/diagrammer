@@ -1,4 +1,4 @@
-name := "my-chisel-experiments"
+name := "firrtl-diagrammer"
 
 version := "1.0"
 
@@ -47,6 +47,8 @@ libraryDependencies ++= (Seq("chisel3","chisel-iotesters").map {
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.5",
   "org.scalacheck" %% "scalacheck" % "1.12.4")
+
+libraryDependencies += "com.github.scopt" %% "scopt" % "3.7.0"
 
 scalacOptions ++= scalacOptionsVersion(scalaVersion.value)
 

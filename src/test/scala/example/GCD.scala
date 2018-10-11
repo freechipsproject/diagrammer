@@ -26,8 +26,8 @@ class GCD extends Module with VisualizerAnnotator {
   io.z := x
   io.v := y === 0.U
 
-  visualize(this, depth = 2)
-  setDotProgram("dot")
+//  visualize(this, depth = 2)
+//  setDotProgram("dot")
 }
 
 class GCDUnitTester(c: GCD) extends PeekPokeTester(c) {

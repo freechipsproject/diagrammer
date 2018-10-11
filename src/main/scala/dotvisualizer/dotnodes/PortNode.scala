@@ -2,9 +2,10 @@
 
 package dotvisualizer.dotnodes
 
-case class PortNode(name: String, parentOpt: Option[DotNode], rank: Int=10) extends DotNode {
+case class PortNode(name: String, parentOpt: Option[DotNode], rank: Int=10, isInput: Boolean = false) extends DotNode {
   def render: String = {
-    s"""$absoluteName [shape = "rectangle" style="filled" bgcolor="#E0FFFF" label="$name" rank="$rank"]
+    val color = if(! isInput) { s"#E0FFFF" } else { s"#CCCCCC"}
+    s"""$absoluteName [shape = "rectangle" style="filled" fillcolor="$color" label="$name" rank="$rank"]
      """.stripMargin
   }
 }

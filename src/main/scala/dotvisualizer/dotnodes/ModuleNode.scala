@@ -4,22 +4,33 @@ package dotvisualizer.dotnodes
 
 import java.io.{File, PrintWriter}
 
+import dotvisualizer.transforms.MakeOneDiagram
+
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
-case class ModuleNode(name: String, parentOpt: Option[DotNode], var url_string:Option[String]= Some("TopOfVisualizer.dot.svg")) extends DotNode {
+case class ModuleNode(
+  name: String,
+  parentOpt: Option[DotNode],
+  var url_string:Option[String]= Some("TopOfVisualizer.dot.svg"),
+  subModuleDepth: Int = 0
+) extends DotNode {
+
   val inputs: ArrayBuffer[DotNode] = new ArrayBuffer()
   val outputs: ArrayBuffer[DotNode] = new ArrayBuffer()
   val namedNodes: mutable.HashMap[String, DotNode] = new mutable.HashMap()
   val connections: mutable.HashMap[String, String] = new mutable.HashMap()
   val localConnections: mutable.HashMap[String, String] = new mutable.HashMap()
 
+  val backgroundColorIndex: Int = subModuleDepth % MakeOneDiagram.subModuleColorsByDepth.length
+  val backgroundColor: String = MakeOneDiagram.subModuleColorsByDepth(backgroundColorIndex)
+
   def render: String = {
     val s = s"""
        |subgraph $absoluteName {
        |  label="$name"
        |  URL="${url_string.getOrElse("")}"
-       |  bgcolor="#FFF8DC"
+       |  bgcolor="$backgroundColor"
        |  ${inputs.map(_.render).mkString("\n")}
        |  ${outputs.map(_.render).mkString("\n")}
        |  ${children.map(_.render).mkString("\n")}

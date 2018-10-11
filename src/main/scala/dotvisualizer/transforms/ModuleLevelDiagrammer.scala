@@ -1,18 +1,15 @@
 // See LICENSE for license details.
 
-package dotvisualizer
+package dotvisualizer.transforms
 
 import java.io.PrintWriter
 
+import dotvisualizer.{FirrtlDiagrammer, StartModule}
+import firrtl.Mappers._
 import firrtl._
 import firrtl.analyses.InstanceGraph
-import firrtl.ir._
-import firrtl.passes.Pass
-
-import firrtl.Mappers._
 
 import scala.collection.mutable
-import sys.process._
 
 /**
   * Represents a module instance in the graph of instances in a circuit.
@@ -83,25 +80,27 @@ object ModuleDotNode {
 }
 
 /**
-  * Creates a high level graph that shows the instances in the circuit and their Module names
-  * @param targetDir  directory where dot graph will end up
-  * @param backFileName file name in that directory
+  * Creates a high level diagram that shows the instances in the circuit and their Module names
   */
 //
 //TODO: Make even more links from these graph nodes back to the other generated graphs
 //
-class ModuleLevelGrapher(targetDir: String, backFileName: String) extends Pass {
-
-  def save(fileName: String, dotProgram: String = "dot"): Unit = {
-    if(dotProgram != "none") {
-      //noinspection SpellCheckingInspection
-      val dotProcessString = s"$dotProgram -Tsvg -O $fileName"
-      dotProcessString.!!
-    }
-  }
+class ModuleLevelDiagrammer extends Transform {
+  override def inputForm: CircuitForm = LowForm
+  override def outputForm: CircuitForm = LowForm
 
   //scalastyle:off cyclomatic.complexity method.length
-  def run(c: Circuit) : Circuit = {
+  def execute(circuitState: CircuitState) : CircuitState = {
+    // (targetDir: String, backFileName: String)
+
+    val c = circuitState.circuit
+    val targetDir = FirrtlDiagrammer.getTargetDir(circuitState.annotations)
+    val startModule = circuitState.annotations.collectFirst {
+      case StartModule(moduleName) => moduleName
+    }.getOrElse(circuitState.circuit.main)
+
+    val backFileName = s"$targetDir$startModule.dot.svg"
+
     val TopLevel = "TopLevel"
 
     val moduleNodes = new mutable.ArrayBuffer[ModuleDotNode]()
@@ -173,33 +172,17 @@ class ModuleLevelGrapher(targetDir: String, backFileName: String) extends Pass {
     }
 
     // Add the back button
-    if(backFileName.nonEmpty){
-      printFile.write("\"Back\" [URL=\"" + backFileName + ".dot.svg\" ]")
-    }
+    // if(backFileName.nonEmpty){
+    //   printFile.write("\"Back\" [URL=\"" + backFileName + "\" ]")
+    // }
+
+    // close the block
     printFile.write("}")
 
     // Finish writing the file
     printFile.close()
-    save(s"$targetDir$TopLevel.dot")
+    FirrtlDiagrammer.render(s"$targetDir$TopLevel.dot")
 
-    c
+    circuitState
   }
 }
-
-object ModuleLevelGrapher {
-  def main(args: Array[String]): Unit = {
-    args.headOption match {
-      case Some(fileName) =>
-        val firrtlSource = io.Source.fromFile(fileName).getLines().mkString("\n")
-        val firrtl = ToLoFirrtl.lower(Parser.parse(firrtlSource))
-
-        val grapher = new ModuleLevelGrapher(targetDir = "./", "")
-
-        grapher.run(firrtl)
-
-      case _ =>
-    }
-  }
-}
-
-

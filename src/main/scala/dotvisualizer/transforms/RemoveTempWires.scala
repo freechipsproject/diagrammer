@@ -4,25 +4,28 @@ package dotvisualizer.transforms
 
 import dotvisualizer.ToLoFirrtl
 import firrtl.ir._
-import firrtl.passes.Pass
-import firrtl.{Parser, WRef, WSubField, WSubIndex}
+import firrtl.{CircuitForm, CircuitState, LowForm, Parser, Transform, WRef, WSubField, WSubIndex}
 
 import scala.collection.mutable
 
-class RemoveTempWires() extends Pass {
+//scalastyle:off regex
 
+class RemoveTempWires extends Transform {
+  override def inputForm: CircuitForm = LowForm
+  override def outputForm: CircuitForm = LowForm
 
   /**
     * Foreach Module in a firrtl circuit
-    *   Find all the DefNodes with temp names and save their expression
+    *   Find all the DefNodes with temp names and render their expression
     *   Remove all the found dev nodes
     *   recursively replace their references with their associated expression
-    * @param c circuit to be altered
+    * @param state to be altered
     * @return
     */
   //scalastyle:off method.length cyclomatic.complexity
-  def run(c: Circuit): Circuit = {
+  def execute(state: CircuitState): CircuitState = {
 
+    val c = state.circuit
     /**
       * removes all references to temp wires in module
       * @param module the module to be altered
@@ -35,7 +38,7 @@ class RemoveTempWires() extends Pass {
       /**
         * Saves reference to the expression associated
         * with a temp wire associated with a Node statement
-        * @param s
+        * @param s statement to be checked
         */
       def collectTempExpressions(s: Statement): Unit = s match {
         case block: Block =>
@@ -118,7 +121,7 @@ class RemoveTempWires() extends Pass {
       case m: Module => removeTempWiresFromModule(m)
     }
 
-    Circuit(c.info, newModules, c.main)
+    state.copy(circuit = Circuit(c.info, newModules, c.main))
   }
 }
 
@@ -132,10 +135,10 @@ object RemoveTempWires  {
         val firrtlSource = io.Source.fromFile(fileName).getLines().mkString("\n")
         val firrtl = ToLoFirrtl.lower(Parser.parse(firrtlSource))
 
-        val grapher = new RemoveTempWires()
+        val grapher = new RemoveTempWires
 
-        val newCircuit = grapher.run(firrtl)
-        println(s"${newCircuit.serialize}")
+        val newState = grapher.execute(CircuitState(firrtl, LowForm, Seq.empty))
+        println(s"${newState.circuit.serialize}")
 
       case _ =>
     }

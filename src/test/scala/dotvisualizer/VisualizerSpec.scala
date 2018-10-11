@@ -118,7 +118,7 @@ class AnnotatingVisualizerSpec extends FreeSpec with Matchers {
 //  }
 
   """
-    |Visualizer is an example of a module that has two sub-modules A and B who both instantiate their
+    |FirrtlDiagrammer is an example of a module that has two sub-modules A and B who both instantiate their
     |own instances of module C.  This highlights the difference between specific and general
     |annotation scopes
   """.stripMargin - {
