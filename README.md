@@ -8,7 +8,7 @@ use of annotations as demonstrated in the examples.GCD test.
 ## Example
 
 ### Top Level Example
-![Graph](images/TopLevel.dot.svg?raw=true)
+![Graph](images/TopLevel.dot.svg)
 
 ### Module Example
 
