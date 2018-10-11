@@ -12,7 +12,7 @@ use of annotations as demonstrated in the examples.GCD test.
 
 ### Module Example
 
-![Graph](images/TopOfVisualizer.dot.svg?raw=true)
+![Graph](images/TopOfVisualizer.dot.svg)
 
 ## Using
 ### Install
