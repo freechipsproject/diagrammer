@@ -119,6 +119,7 @@ class RemoveTempWires extends Transform {
 
     val newModules = c.modules.map {
       case m: Module => removeTempWiresFromModule(m)
+      case otherMod => otherMod
     }
 
     state.copy(circuit = Circuit(c.info, newModules, c.main))
