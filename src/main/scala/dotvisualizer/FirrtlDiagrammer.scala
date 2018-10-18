@@ -263,6 +263,19 @@ object FirrtlDiagrammer {
         val targetDir = s"./${loweredAst.main}/"
         FileUtils.makeDirectory(targetDir)
 
+        val printWriter = new PrintWriter(new File(s"$targetDir/styles.css"))
+        printWriter.println(
+          """
+            |.edge:hover * {
+            |  stroke: #7fff00;
+            |}
+            |.edge:hover polygon {
+            |  fill: #7fff00;
+            |}
+          """.stripMargin
+        )
+        printWriter.close()
+
         val controlAnnotations = config.toAnnotations
 
         val circuitState = CircuitState(loweredAst, LowForm, controlAnnotations)
