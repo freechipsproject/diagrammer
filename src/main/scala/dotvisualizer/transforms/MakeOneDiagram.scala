@@ -354,6 +354,7 @@ class MakeOneDiagram extends Transform {
     findModule(startModuleName, c) match {
       case topModule: DefModule =>
         pl(s"digraph ${topModule.name} {")
+        pl("""stylesheet = "styles.css"""")
         pl("rankdir=\"LR\"")
         //        pl(s"graph [splines=ortho];")
         val topModuleNode = ModuleNode(startModuleName, parentOpt = None)

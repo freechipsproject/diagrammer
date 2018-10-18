@@ -111,7 +111,7 @@ class ModuleLevelDiagrammer extends Transform {
 
     printFile.write("digraph " + TopLevel + " { rankdir=\"TB\" \n node [shape=\"rectangle\"]; \n")
     printFile.write("rankdir=\"LR\" \n")
-
+    printFile.println("""stylesheet = "styles.css"""")
 
     //statements that have modules, have a list of module names,
 
