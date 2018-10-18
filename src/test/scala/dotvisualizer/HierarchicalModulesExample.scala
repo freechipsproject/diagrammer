@@ -3,14 +3,10 @@
 package dotvisualizer
 
 import chisel3._
-import chisel3.iotesters.PeekPokeTester
 import org.scalatest._
 
-/** Circuit Top instantiates A and B and both A and B instantiate C
-  * Illustrations of annotations of various components and modules in both
-  * relative and absolute cases
-  *
-  * This is currently not much of a test, read the printout to see what annotations look like
+/**
+  * Circuit Top instantiates A and B and both A and B instantiate C
   */
 
 //scalastyle:off magic.number
@@ -21,14 +17,12 @@ import org.scalatest._
   * @param widthC io width
   */
 //noinspection TypeAnnotation
-class VizModC(widthC: Int) extends Module with VisualizerAnnotator {
+class VizModC(widthC: Int) extends Module {
   val io = IO(new Bundle {
     val in = Input(UInt(widthC.W))
     val out = Output(UInt(widthC.W))
   })
   io.out := io.in
-
-  // visualize(this, depth = 2)
 }
 
 /**
@@ -36,7 +30,7 @@ class VizModC(widthC: Int) extends Module with VisualizerAnnotator {
   * based on it's parameter
   * @param annoParam  parameter is only used in annotation not in circuit
   */
-class VizModA(annoParam: Int) extends Module with VisualizerAnnotator {
+class VizModA(annoParam: Int) extends Module {
   //noinspection TypeAnnotation
   val io = IO(new Bundle {
     val in = Input(UInt())
@@ -50,11 +44,9 @@ class VizModA(annoParam: Int) extends Module with VisualizerAnnotator {
   modB.io.in := io.in
   modB2.io.in := io.in
   io.out := modC.io.out + modB.io.out + modB2.io.out
-
-//    visualize(this, depth = 1)
 }
 
-class VizModB(widthB: Int) extends Module with VisualizerAnnotator{
+class VizModB(widthB: Int) extends Module {
   //noinspection TypeAnnotation
   val io = IO(new Bundle {
     val in = Input(UInt(widthB.W))
@@ -65,7 +57,7 @@ class VizModB(widthB: Int) extends Module with VisualizerAnnotator{
   io.out := modC.io.out
 }
 
-class TopOfVisualizer extends Module with VisualizerAnnotator {
+class TopOfVisualizer extends Module {
   //noinspection TypeAnnotation
   val io = IO(new Bundle {
     val in1    = Input(UInt(32.W))
@@ -85,7 +77,6 @@ class TopOfVisualizer extends Module with VisualizerAnnotator {
   val modB = Module(new VizModB(32))
   val modC = Module(new VizModC(48))
 
-
   when(io.select) {
     x := io.in1
     myMem(io.in1) := io.in2
@@ -102,38 +93,14 @@ class TopOfVisualizer extends Module with VisualizerAnnotator {
 
   modB.io.in := x
   modC.io.in := x
-
-  /**
-    * Play with the depth over the range 0 to 3, to see how it affects rendering
-    */
-  visualize(this, depth = 9)
 }
 
-class VisualizerTester(c: TopOfVisualizer) extends PeekPokeTester(c) {
-}
+class HierarchicalModulesExample extends FreeSpec with Matchers {
 
-class AnnotatingVisualizerSpec extends FreeSpec with Matchers {
-//  def findAnno(as: Seq[Annotation], name: String): Option[Annotation] = {
-//    as.find { a => a.targetString == name }
-//  }
-
-  """
-    |FirrtlDiagrammer is an example of a module that has two sub-modules A and B who both instantiate their
-    |own instances of module C.  This highlights the difference between specific and general
-    |annotation scopes
-  """.stripMargin - {
-
-    """
-      |annotations are not resolved at after circuit elaboration,
-      |that happens only after emit has been called on circuit""".stripMargin in {
-
-      iotesters.Driver.execute(
-        Array("--compiler", "low",
-          "--target-dir", "test_run_dir/visualizer_test", "--top-name", "test"),
-        () => new TopOfVisualizer
-      ) { c =>
-        new VisualizerTester(c)
-      }
-    }
+  """This is an example of a module with hierarchical submodules """  in {
+    val circuit = chisel3.Driver.elaborate(() => new TopOfVisualizer)
+    val firrtl = chisel3.Driver.emit(circuit)
+    val config = Config(targetDir = "test_run_dir/visualizer/", firrtlSource = firrtl)
+    FirrtlDiagrammer.run(config)
   }
 }

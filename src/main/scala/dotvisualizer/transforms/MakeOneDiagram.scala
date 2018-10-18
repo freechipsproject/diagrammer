@@ -5,7 +5,7 @@ package dotvisualizer.transforms
 import java.io.PrintWriter
 
 import dotvisualizer.dotnodes._
-import dotvisualizer.{Scope, StartModule}
+import dotvisualizer.{FirrtlDiagrammer, Scope, StartModule}
 import firrtl.PrimOps._
 import firrtl.ir._
 import firrtl.{CircuitForm, CircuitState, LowForm, TargetDirAnnotation}
@@ -30,11 +30,8 @@ class MakeOneDiagram extends Transform {
     val nameToNode: mutable.HashMap[String, DotNode] = new mutable.HashMap()
 
     val c = state.circuit
-    val targetDir = state.annotations.collectFirst { case x : TargetDirAnnotation => x } match {
-      case Some(TargetDirAnnotation(value)) if value.nonEmpty =>
-        if(value.endsWith("/")) value else value + "/"
-      case _ => "./"
-    }
+    val targetDir = FirrtlDiagrammer.getTargetDir(state.annotations)
+
     val startModuleName = state.annotations.collectFirst {
       case StartModule(moduleName) => moduleName
     }.getOrElse(state.circuit.main)
