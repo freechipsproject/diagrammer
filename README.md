@@ -1,9 +1,11 @@
 Chisel / FIRRTL Diagramming Project
 =======================
 
-This project can generate GraphViz dot files and from those png files representing Chisel generated Firrtl circuits.
+This project can generate GraphViz dot files and from those svg files representing Chisel generated Firrtl circuits.
 It is also an example of a creating a Firrtl Transformation.  This transformation can be applied through the 
-use of annotations as demonstrated in the examples.GCD test.  
+use of annotations as demonstrated in the examples.GCD test. The graphs are mostly clickable, clicking a module
+will take you to a diagram for just that module. There is a TopLevel diagram that just shows the module hierarchy.
+Also, an individual arrow can be hovered over to make it turn red and become easier to follow.
 
 ## Example
 
@@ -25,7 +27,8 @@ cd visualizer
 ### Dependencies
 You will need [GraphViz](https://www.graphviz.org/) (specifically a default path to the program `dot`) and `sbt`.
 
-Note that this project currently depends on the master branches of all components of the Chisel ecosystem (treadle, firrtl-interpreter, firrtl, chisel-testers, chisel3), so you will need to run `sbt publishLocal` for all components.
+Note that this project currently depends on the master branches of all components
+of the Chisel ecosystem (chisel3 and firrtl), so you will need to `clone` and `sbt publishLocal` for each of these.
 
 ### Creating Circuit Diagrams.
 To create a set of graphs of a Firrtl Circuit all you need is this project and a Firrtl file (typically a file 
@@ -43,8 +46,11 @@ Because of the size of these files, the diagrams will include the internal logic
 presentation of any sub-modules found.
 
 ## Options
+* -i, --firrtl-source set the source firrtl to work on
 * -t, --targer-dir sets the output directory for the svg
 * -s, --start-module sets the module name where the graphs will start being generated. The default is at the top
+* -o, --open-program sets the open program, default is `open`, set to empty to tell it not to do open
+* -j, --just-top-level generates just the top level diagram
 
 ## How Visualizer Works
 This program uses a number of firrtl transforms to create multiple graphviz dot file graph programs.
