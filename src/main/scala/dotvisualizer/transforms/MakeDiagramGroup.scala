@@ -24,6 +24,8 @@ class MakeDiagramGroup extends Transform {
 
     val targetDir = FirrtlDiagrammer.getTargetDir(state.annotations)
 
+    FirrtlDiagrammer.addCss(targetDir)
+
     val dotProgram = state.annotations.collectFirst {
       case SetRenderProgram(program) => program
     }.getOrElse("dot")
@@ -64,10 +66,6 @@ class MakeDiagramGroup extends Transform {
       }
       modulesSeen += moduleName
     }
-
-    val fileName = s"${targetDir}TopLevel.dot"
-
-    FirrtlDiagrammer.show(fileName, openProgram)
 
     // we return the original state, all transform work is just in the interest of diagramming
     state

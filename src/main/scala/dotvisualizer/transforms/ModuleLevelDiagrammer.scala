@@ -95,11 +95,10 @@ class ModuleLevelDiagrammer extends Transform {
 
     val c = circuitState.circuit
     val targetDir = FirrtlDiagrammer.getTargetDir(circuitState.annotations)
+
     val startModule = circuitState.annotations.collectFirst {
       case StartModule(moduleName) => moduleName
     }.getOrElse(circuitState.circuit.main)
-
-    val backFileName = s"$targetDir$startModule.dot.svg"
 
     val TopLevel = "TopLevel"
 
@@ -115,7 +114,7 @@ class ModuleLevelDiagrammer extends Transform {
 
     //statements that have modules, have a list of module names,
 
-    val top = WDefInstance(c.main, c.main)
+    val top = WDefInstance(startModule, startModule)
 
     /**
       * Find the given instance in the Module Hierarchy
@@ -170,11 +169,6 @@ class ModuleLevelDiagrammer extends Transform {
     for((parent, child) <- connections) {
       printFile.write(s"$parent -> $child\n")
     }
-
-    // Add the back button
-    // if(backFileName.nonEmpty){
-    //   printFile.write("\"Back\" [URL=\"" + backFileName + "\" ]")
-    // }
 
     // close the block
     printFile.write("}")
