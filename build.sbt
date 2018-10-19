@@ -44,8 +44,8 @@ libraryDependencies ++= (Seq("chisel3").map {
   dep: String => "edu.berkeley.cs" %% dep % sys.props.getOrElse(dep + "Version", defaultVersions(dep)) })
 
 libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest" % "2.2.5",
-  "org.scalacheck" %% "scalacheck" % "1.12.4")
+  "org.scalatest" %% "scalatest" % "3.0.1",
+  "org.scalacheck" %% "scalacheck" % "1.13.4")
 
 libraryDependencies += "com.github.scopt" %% "scopt" % "3.7.0"
 
