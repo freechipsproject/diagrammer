@@ -20,8 +20,8 @@ Also, an individual arrow can be hovered over to make it turn red and become eas
 ### Install
 Installing this software should be pretty much the following.
 ```bash
-git clone https://github.com/chick/visualizer
-cd visualizer
+git clone https://github.com/freechipsproject/diagrammer
+cd diagrammer
 ```
 
 ### Dependencies
@@ -52,7 +52,7 @@ presentation of any sub-modules found.
 * -o, --open-program sets the open program, default is `open`, set to empty to tell it not to do open
 * -j, --just-top-level generates just the top level diagram
 
-## How Visualizer Works
+## How Diagrammer Works
 This program uses a number of firrtl transforms to create multiple graphviz dot file graph programs.
 The dot files are translated into .svg files. See [GeneratorBootcamp Firrtl Chapters](https://github.com/freechipsproject/chisel-bootcamp)
 for a good introduction to writing Firrtl transforms
