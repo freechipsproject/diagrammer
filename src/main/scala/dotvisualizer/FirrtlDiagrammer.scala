@@ -38,7 +38,11 @@ case class SetRenderProgram(renderProgram: String = "dot") extends OptionAnnotat
 
 case class SetOpenProgram(openProgram: String) extends OptionAnnotation
 
+case class DotTimeOut(seconds: Int) extends OptionAnnotation
+
 object FirrtlDiagrammer {
+
+  var dotTimeOut = 7
 
   /**
     * get the target directory from the annotations
@@ -83,11 +87,12 @@ object FirrtlDiagrammer {
         val process = Process(dotProcessString).run()
         val processFuture = Future(blocking(process.exitValue()))
         try {
-          Await.result(processFuture, Duration(7, "sec"))
+          Await.result(processFuture, Duration(dotTimeOut, "sec"))
         }
         catch {
           case _: TimeoutException =>
-            println(s"Rendering timed out on $fileName with command $dotProcessString")
+            println(s"Rendering timed out after $dotTimeOut seconds on $fileName with command $dotProcessString")
+            println(s"You can try increasing with the --dot-timeout seconds flag")
             process.destroy()
             val printWriter = new PrintWriter(new File(fileName + ".svg"))
             printWriter.print(
@@ -104,7 +109,10 @@ object FirrtlDiagrammer {
                 |<polygon fill="#ffffff" stroke="transparent" points="-4,4 -4,-40 347.2637,-40 347.2637,4 -4,4"/>
                 |<!-- Sorry, Rendering timed out on this file, Use Back to return -->
                 |<g id="node1" class="node">
-                |<title>Sorry, Rendering timed out on this file, Use Back to return</title>
+                |<title>
+                |Sorry, Rendering timed out on this file, Use Back to return.
+                |You can try increasing the timeout with the --dot-timeout seconds flag
+                |</title>
                 |<polygon fill="none" stroke="#000000" points="343.3956,-36 -.1319,-36 -.1319,0 343.3956,0 343.3956,-36"/>
                 |<text text-anchor="middle" x="171.6318" y="-13.8" font-family="Times,serif" font-size="14.00" fill="#000000">Sorry, Rendering timed out on this file, Use Back to return</text>
                 |</g>
@@ -147,6 +155,8 @@ object FirrtlDiagrammer {
         io.Source.fromFile(config.firrtlSourceFile).getLines().mkString("\n")
       }
     }
+
+    dotTimeOut = config.dotTimeOut
 
     val ast = Parser.parse(sourceFirrtl)
     val controlAnnotations = config.toAnnotations
@@ -201,6 +211,10 @@ object FirrtlDiagrammer {
       opt[Unit]('j', "just-top-level")
               .action { (_, c) => c.copy(justTopLevel = true) }
               .text("use this to only see the top level view")
+
+      opt[Int]('s', "dot-timeout-seconds")
+              .action { (x, c) => c.copy(dotTimeOut = x) }
+              .text("use this to only see the top level view")
     }
 
     parser.parse(args, Config()) match {
@@ -218,7 +232,8 @@ case class Config(
   renderProgram:    String = "dot",
   openProgram:      String = "open",
   targetDir:        String = "",
-  justTopLevel:     Boolean = false
+  justTopLevel:     Boolean = false,
+  dotTimeOut:       Int     = 7
 ) {
   def toAnnotations: Seq[Annotation] = {
     val dir = {
@@ -233,7 +248,8 @@ case class Config(
     Seq(
       SetRenderProgram(renderProgram),
       SetOpenProgram(openProgram),
-      TargetDirAnnotation(dir)
+      TargetDirAnnotation(dir),
+      DotTimeOut(dotTimeOut)
     ) ++
     (if(startModuleName.nonEmpty) Seq(StartModule(startModuleName)) else Seq.empty)
   }
