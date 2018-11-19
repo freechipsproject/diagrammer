@@ -65,10 +65,15 @@ object FirrtlDiagrammer {
     * @param fileName    file to be opened
     * @param openProgram program to use
     */
-  def show(fileName: String, openProgram: String = "open"): Unit = {
+  def show(fileName: String, openProgram: String): Unit = {
     if(openProgram.nonEmpty && openProgram != "none") {
       val openProcessString = s"$openProgram $fileName.svg"
       openProcessString.!!
+    }
+    else {
+      println(s"""There is no program identified which will render the svg files.""")
+      println(s"""The file to start with is $fileName.svg, open it in the appropriate viewer""")
+      println(s"""Specific module views should be in the same directory as $fileName.svg""")
     }
   }
 
