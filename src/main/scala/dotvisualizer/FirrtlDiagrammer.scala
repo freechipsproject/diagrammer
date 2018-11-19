@@ -230,7 +230,7 @@ case class Config(
   firrtlSource:     String = "",
   startModuleName:  String = "",
   renderProgram:    String = "dot",
-  openProgram:      String = "open",
+  openProgram:      String = Config.getOpenForOs,
   targetDir:        String = "",
   justTopLevel:     Boolean = false,
   dotTimeOut:       Int     = 7
@@ -252,6 +252,21 @@ case class Config(
       DotTimeOut(dotTimeOut)
     ) ++
     (if(startModuleName.nonEmpty) Seq(StartModule(startModuleName)) else Seq.empty)
+  }
+}
+
+object Config {
+  private val MacPattern = """.*mac.*""".r
+  private val LinuxPattern = """.*n[iu]x.*""".r
+  private val WindowsPattern = """.*win.*""".r
+
+  def getOpenForOs: String = {
+    System.getProperty("os.name").toLowerCase match {
+      case MacPattern()     => "open"
+      case LinuxPattern()   => "xdg-open"
+      case WindowsPattern() => ""          // no clear agreement here.
+      case _                => ""          // punt
+    }
   }
 }
 
