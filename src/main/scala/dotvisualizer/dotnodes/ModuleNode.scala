@@ -12,7 +12,7 @@ import scala.collection.mutable.ArrayBuffer
 case class ModuleNode(
   name: String,
   parentOpt: Option[DotNode],
-  var url_string:Option[String]= None,
+  var url_string: Option[String]= None,
   subModuleDepth: Int = 0
 ) extends DotNode {
 
@@ -20,7 +20,7 @@ case class ModuleNode(
   val outputs: ArrayBuffer[DotNode] = new ArrayBuffer()
   val namedNodes: mutable.HashMap[String, DotNode] = new mutable.HashMap()
   val connections: mutable.HashMap[String, String] = new mutable.HashMap()
-  val biConnections: mutable.HashMap[String, ArrayBuffer[String]] = new mutable.HashMap[String, ArrayBuffer[String]]() {
+  private val analogConnections = new mutable.HashMap[String, ArrayBuffer[String]]() {
     override def default(key: String): ArrayBuffer[String] = {
       this(key) = new ArrayBuffer[String]()
       this(key)
@@ -46,7 +46,7 @@ case class ModuleNode(
        |  ${children.map(_.render).mkString("\n")}
        |
        |  ${connections.map { case (k, v) => s"$v -> $k"}.mkString("\n")}
-       |  ${biConnections.map { case (k, v) => expandBiConnects(k, v) }.mkString("\n")}
+       |  ${analogConnections.map { case (k, v) => expandBiConnects(k, v) }.mkString("\n")}
        |}
      """.stripMargin
     s
@@ -75,8 +75,8 @@ case class ModuleNode(
     connections(destination) = source
   }
 
-  def biConnect(destination: String, source: String, edgeLabel: String = ""): Unit = {
-    biConnections(destination) += source
+  def analogConnect(destination: String, source: String, edgeLabel: String = ""): Unit = {
+    analogConnections(destination) += source
   }
 
   //scalastyle:off method.name

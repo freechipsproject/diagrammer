@@ -309,7 +309,7 @@ class MakeOneDiagram extends Transform {
               case lhs :: tail =>
                 val lhsName = getConnectInfo(lhs)
                 tail.foreach { rhs =>
-                  moduleNode.biConnect(lhsName, processExpression(rhs))
+                  moduleNode.analogConnect(lhsName, processExpression(rhs))
                 }
               case _ =>
             }
