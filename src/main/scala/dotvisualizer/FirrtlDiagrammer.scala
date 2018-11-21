@@ -65,10 +65,15 @@ object FirrtlDiagrammer {
     * @param fileName    file to be opened
     * @param openProgram program to use
     */
-  def show(fileName: String, openProgram: String = "open"): Unit = {
+  def show(fileName: String, openProgram: String): Unit = {
     if(openProgram.nonEmpty && openProgram != "none") {
       val openProcessString = s"$openProgram $fileName.svg"
       openProcessString.!!
+    }
+    else {
+      println(s"""There is no program identified which will render the svg files.""")
+      println(s"""The file to start with is $fileName.svg, open it in the appropriate viewer""")
+      println(s"""Specific module views should be in the same directory as $fileName.svg""")
     }
   }
 
@@ -230,7 +235,7 @@ case class Config(
   firrtlSource:     String = "",
   startModuleName:  String = "",
   renderProgram:    String = "dot",
-  openProgram:      String = "open",
+  openProgram:      String = Config.getOpenForOs,
   targetDir:        String = "",
   justTopLevel:     Boolean = false,
   dotTimeOut:       Int     = 7
@@ -252,6 +257,21 @@ case class Config(
       DotTimeOut(dotTimeOut)
     ) ++
     (if(startModuleName.nonEmpty) Seq(StartModule(startModuleName)) else Seq.empty)
+  }
+}
+
+object Config {
+  private val MacPattern = """.*mac.*""".r
+  private val LinuxPattern = """.*n[iu]x.*""".r
+  private val WindowsPattern = """.*win.*""".r
+
+  def getOpenForOs: String = {
+    System.getProperty("os.name").toLowerCase match {
+      case MacPattern()     => "open"
+      case LinuxPattern()   => "xdg-open"
+      case WindowsPattern() => ""          // no clear agreement here.
+      case _                => ""          // punt
+    }
   }
 }
 
