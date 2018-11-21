@@ -8,7 +8,7 @@ import dotvisualizer.dotnodes._
 import dotvisualizer.{FirrtlDiagrammer, Scope, StartModule}
 import firrtl.PrimOps._
 import firrtl.ir._
-import firrtl.{CircuitForm, CircuitState, LowForm, TargetDirAnnotation}
+import firrtl.{CircuitForm, CircuitState, LowForm}
 import firrtl.{Transform, WDefInstance, WRef, WSubField, WSubIndex}
 
 import scala.collection.mutable
@@ -272,6 +272,28 @@ class MakeOneDiagram extends Transform {
         moduleNode += memNode
       }
 
+      def getConnectInfo(expression: Expression): String = {
+        val (fName, dotName) = expression match {
+          case WRef(name, _, _, _) => (getFirrtlName(name), expand(name))
+          case Reference(name, _) => (getFirrtlName(name), expand(name))
+          case subfield: WSubField =>
+            (getFirrtlName(subfield.serialize), expand(subfield.serialize))
+          case subfield: SubField =>
+            (getFirrtlName(subfield.serialize), expand(subfield.serialize))
+          case s: WSubIndex => (getFirrtlName(s.serialize), expand(s.serialize))
+          case other =>
+            println(s"Found bad connect arg $other")
+            ("badName", "badName")
+        }
+        val lhsName = nameToNode.get(fName) match {
+          case Some(regNode: RegisterNode) => regNode.in
+          case Some(memPort: MemoryPort) => memPort.absoluteName
+          case _ => dotName
+        }
+        lhsName
+      }
+
+
       def processStatement(s: Statement): Unit = {
         s match {
           case block: Block =>
@@ -279,24 +301,18 @@ class MakeOneDiagram extends Transform {
               processStatement(subStatement)
             }
           case con: Connect if scope.doComponents() =>
-            val (fName, dotName) = con.loc match {
-              case WRef(name, _, _, _) => (getFirrtlName(name), expand(name))
-              case Reference(name, _) => (getFirrtlName(name), expand(name))
-              case subfield: WSubField =>
-                (getFirrtlName(subfield.serialize), expand(subfield.serialize))
-              case subfield: SubField =>
-                (getFirrtlName(s.serialize), expand(subfield.serialize))
-              case s: WSubIndex => (getFirrtlName(s.serialize), expand(s.serialize))
-              case other =>
-                println(s"Found bad connect arg $other")
-                ("badName","badName")
-            }
-            val lhsName = nameToNode.get(fName) match {
-              case Some(regNode: RegisterNode) => regNode.in
-              case Some(memPort: MemoryPort) => memPort.absoluteName
-              case _ => dotName
-            }
+            val lhsName = getConnectInfo(con.loc)
             moduleNode.connect(lhsName, processExpression(con.expr))
+
+          case Attach(_, exprs) if scope.doComponents() =>
+            exprs.toList match {
+              case lhs :: tail =>
+                val lhsName = getConnectInfo(lhs)
+                tail.foreach { rhs =>
+                  moduleNode.analogConnect(lhsName, processExpression(rhs))
+                }
+              case _ =>
+            }
 
           case WDefInstance(_, instanceName, moduleName, _) =>
 

@@ -12,7 +12,7 @@ import scala.collection.mutable.ArrayBuffer
 case class ModuleNode(
   name: String,
   parentOpt: Option[DotNode],
-  var url_string:Option[String]= Some("TopOfVisualizer.dot.svg"),
+  var url_string: Option[String]= None,
   subModuleDepth: Int = 0
 ) extends DotNode {
 
@@ -20,12 +20,22 @@ case class ModuleNode(
   val outputs: ArrayBuffer[DotNode] = new ArrayBuffer()
   val namedNodes: mutable.HashMap[String, DotNode] = new mutable.HashMap()
   val connections: mutable.HashMap[String, String] = new mutable.HashMap()
+  private val analogConnections = new mutable.HashMap[String, ArrayBuffer[String]]() {
+    override def default(key: String): ArrayBuffer[String] = {
+      this(key) = new ArrayBuffer[String]()
+      this(key)
+    }
+  }
   val localConnections: mutable.HashMap[String, String] = new mutable.HashMap()
 
   val backgroundColorIndex: Int = subModuleDepth % MakeOneDiagram.subModuleColorsByDepth.length
   val backgroundColor: String = MakeOneDiagram.subModuleColorsByDepth(backgroundColorIndex)
 
   def render: String = {
+    def expandBiConnects(target: String, sources: ArrayBuffer[String]): String = {
+      sources.map { vv => s"""$vv -> $target [dir = "both"]"""  }.mkString("\n")
+    }
+
     val s = s"""
        |subgraph $absoluteName {
        |  label="$name"
@@ -36,6 +46,7 @@ case class ModuleNode(
        |  ${children.map(_.render).mkString("\n")}
        |
        |  ${connections.map { case (k, v) => s"$v -> $k"}.mkString("\n")}
+       |  ${analogConnections.map { case (k, v) => expandBiConnects(k, v) }.mkString("\n")}
        |}
      """.stripMargin
     s
@@ -62,6 +73,10 @@ case class ModuleNode(
 
   def connect(destination: String, source: String, edgeLabel: String = ""): Unit = {
     connections(destination) = source
+  }
+
+  def analogConnect(destination: String, source: String, edgeLabel: String = ""): Unit = {
+    analogConnections(destination) += source
   }
 
   //scalastyle:off method.name
