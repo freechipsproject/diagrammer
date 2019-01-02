@@ -126,7 +126,7 @@ class ModuleLevelDiagrammer extends Transform {
       c.modules.find(m => m.name == instance.module) match {
         case Some(module) =>
           val set = new mutable.HashSet[WDefInstance]
-          module map InstanceGraph.collectInstances(set)
+          module foreachStmt InstanceGraph.collectInstances(set)
           set.toSet
 
         case None => Set.empty[WDefInstance]
