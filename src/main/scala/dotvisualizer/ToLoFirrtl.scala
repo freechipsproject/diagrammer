@@ -37,7 +37,6 @@ class FixupOps extends Transform {
   private def onExpr(expr: Expression): Expression =
     expr.map(onExpr) match {
       case prim @ DoPrim(Dshlw,_,_,_) => prim.copy(op = Dshl)
-      case prim @ DoPrim(Shlw,_,_,_) => prim.copy(op = Shl)
       case other => other
     }
   private def onStmt(stmt: Statement): Statement = stmt.map(onStmt).map(onExpr)

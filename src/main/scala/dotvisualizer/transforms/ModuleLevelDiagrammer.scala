@@ -8,6 +8,7 @@ import dotvisualizer.{FirrtlDiagrammer, StartModule}
 import firrtl.Mappers._
 import firrtl._
 import firrtl.analyses.InstanceGraph
+import firrtl.ir.{Block, DefInstance, Statement}
 
 import scala.collection.mutable
 
@@ -100,7 +101,7 @@ class ModuleLevelDiagrammer extends Transform {
       case StartModule(moduleName) => moduleName
     }.getOrElse(circuitState.circuit.main)
 
-    val TopLevel = "TopLevel"
+    val TopLevel = startModule + "_hierarchy"
 
     val moduleNodes = new mutable.ArrayBuffer[ModuleDotNode]()
     val connections = new mutable.ArrayBuffer[(String, String)]()
@@ -124,12 +125,17 @@ class ModuleLevelDiagrammer extends Transform {
       */
     def findModuleByName(instance: WDefInstance): Set[WDefInstance] = {
       c.modules.find(m => m.name == instance.module) match {
-        case Some(module) =>
-          val set = new mutable.HashSet[WDefInstance]
-          module foreachStmt InstanceGraph.collectInstances(set)
+        case Some(module: firrtl.ir.Module) =>
+          val set = new mutable.HashSet[WDefInstance]()
+          def onStmt(s: Statement): Statement = s match {
+            case b: Block => b map onStmt
+            case i: WDefInstance => set += i; i
+            case other => other
+          }
+          onStmt(module.body)
           set.toSet
 
-        case None => Set.empty[WDefInstance]
+        case other => Set.empty[WDefInstance]
       }
     }
 
