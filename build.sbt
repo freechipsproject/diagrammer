@@ -52,8 +52,8 @@ pomExtra := <url>http://chisel.eecs.berkeley.edu/</url>
     </license>
   </licenses>
   <scm>
-    <url>https://github.com/freechipsproject/chisel3.git</url>
-    <connection>scm:git:github.com/freechipsproject/chisel3.git</connection>
+    <url>https://github.com/freechipsproject/diagrammer.git</url>
+    <connection>scm:git:github.com/freechipsproject/diagrammer.git</connection>
   </scm>
   <developers>
     <developer>
