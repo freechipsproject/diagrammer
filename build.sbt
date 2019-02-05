@@ -7,8 +7,8 @@ resolvers ++= Seq(
 organization := "edu.berkeley.cs"
 version := "1.0-SNAPSHOT"
 autoAPIMappings := true
-scalaVersion := "2.11.6"
-crossScalaVersions := Seq("2.12.6", "2.11.12", "2.11.6")
+scalaVersion := "2.12.7"
+crossScalaVersions := Seq("2.12.7", "2.11.12")
 scalacOptions := Seq("-deprecation", "-feature") ++ scalacOptionsVersion(scalaVersion.value)
 
 def scalacOptionsVersion(scalaVersion: String): Seq[String] = {
@@ -57,9 +57,14 @@ pomExtra := <url>http://chisel.eecs.berkeley.edu/</url>
   </scm>
   <developers>
     <developer>
-      <id>jackbackrack</id>
-      <name>Jonathan Bachrach</name>
-      <url>http://www.eecs.berkeley.edu/~jrb/</url>
+      <id>chick</id>
+      <name>Chick Markley</name>
+      <url>https://github.com/chick</url>
+    </developer>
+    <developer>
+      <id>mgnica</id>
+      <name>Monica Kumaran</name>
+      <url>https://github.com/mgnica</url>
     </developer>
   </developers>
 
