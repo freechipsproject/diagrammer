@@ -1,20 +1,99 @@
-import mill._, scalalib._
+import ammonite.ops._
+import ammonite.ops.ImplicitWd._
+import mill._
+import mill.scalalib._
+import mill.scalalib.publish._
+import mill.eval.Evaluator
 
-object diagrammer extends SbtModule {
-  def scalaVersion = "2.12.6"
+import $file.CommonBuild
 
-  def ivyDeps = Agg(
-    ivy"edu.berkeley.cs::chisel3:3.2-SNAPSHOT"
+// An sbt layout with src in the top directory.
+trait CrossUnRootedSbtModule extends CrossSbtModule {
+  override def millSourcePath = super.millSourcePath / ammonite.ops.up
+}
+
+trait CommonModule extends CrossUnRootedSbtModule with PublishModule {
+  def publishVersion = "1.0-SNAPSHOT"
+
+  def pomSettings = PomSettings(
+    description = artifactName(),
+    organization = "edu.berkeley.cs",
+    url = "https://github.com/freechipsproject/diagrammer.git",
+    licenses = Seq(License.`BSD-3-Clause`),
+    versionControl = VersionControl.github("freechipsproject", "diagrammer"),
+    developers = Seq(
+      Developer("chick",    "Charles Markley",     "https://github.com/chick"),
+      Developer("mgnica",   "Monica Kumaran",      "https://github.com/mgnica")
+    )
   )
 
-  object test extends Tests {
-    def ivyDeps = Agg(ivy"org.scalatest::scalatest:3.0.4")
-    def testFrameworks = Seq("org.scalatest.tools.Framework")
+  override def scalacOptions = Seq(
+    "-deprecation",
+    "-explaintypes",
+    "-feature", "-language:reflectiveCalls",
+    "-unchecked",
+    "-Xcheckinit",
+    "-Xlint:infer-any",
+    "-Xlint:missing-interpolator"
+  ) ++ CommonBuild.scalacOptionsVersion(crossScalaVersion)
+
+  override def javacOptions = CommonBuild.javacOptionsVersion(crossScalaVersion)
+}
+
+val crossVersions = Seq("2.12.7", "2.11.12")
+
+// Make this available to external tools.
+object diagrammer extends Cross[DiagrammerModule](crossVersions: _*) {
+  def defaultVersion(ev: Evaluator[Any]) = T.command{
+    println(crossVersions.head)
   }
 
-  // src/ folders etc are directly in this folder as opposed to
-  // e.g. diagrammer/src
-  def millSourcePath = os.pwd
+  def compile = T{
+    diagrammer(crossVersions.head).compile()
+  }
+
+  def jar = T{
+    diagrammer(crossVersions.head).jar()
+  }
+
+  def test = T{
+    diagrammer(crossVersions.head).test.test()
+  }
+
+  def publishLocal = T{
+    diagrammer(crossVersions.head).publishLocal()
+  }
+
+  def docJar = T{
+    diagrammer(crossVersions.head).docJar()
+  }
+}
+
+// Provide a managed dependency on X if -DXVersion="" is supplied on the command line.
+val defaultVersions = Map("chisel3" -> "3.2-SNAPSHOT")
+
+def getVersion(dep: String, org: String = "edu.berkeley.cs") = {
+  val version = sys.env.getOrElse(dep + "Version", defaultVersions(dep))
+  ivy"$org::$dep:$version"
+}
+
+class DiagrammerModule(val crossScalaVersion: String) extends CommonModule {
+  override def artifactName = "diagrammer"
+
+  def chiselDeps = Agg("chisel3").map { d => getVersion(d) }
+
+  override def ivyDeps = Agg(
+    ivy"org.scala-lang.modules:scala-jline:2.12.1",
+    ivy"org.json4s::json4s-native:3.5.3"
+  ) ++ chiselDeps
+
+  object test extends Tests {
+    override def ivyDeps = Agg(
+      ivy"org.scalatest::scalatest:3.0.5",
+      ivy"org.scalacheck::scalacheck:1.14.0"
+    )
+    def testFrameworks = Seq("org.scalatest.tools.Framework")
+  }
 
   def mainClass = Some("dotvisualizer.FirrtlDiagrammer")
 }
