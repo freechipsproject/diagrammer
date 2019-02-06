@@ -184,7 +184,7 @@ object FirrtlDiagrammer {
       transform.execute(circuitState)
     }
 
-    val fileName = s"${targetDir}TopLevel.dot"
+    val fileName = s"${targetDir}${circuitState.circuit.main}_hierarchy.dot"
     val openProgram = controlAnnotations.collectFirst {
       case SetOpenProgram(program) => program
     }.getOrElse("open")

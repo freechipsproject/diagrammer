@@ -374,7 +374,7 @@ class MakeOneDiagram extends Transform {
         processModule("", topModule, topModuleNode, Scope(0, 1))
         //        processModule("", topModule, topModuleNode, getScope(topModule.name))
         pl(topModuleNode.render)
-        pl("\"Modules Only View Here\" [URL=\"TopLevel.dot.svg\" shape=\"rectangle\"]; \n")
+        //pl("\"Modules Only View Here\" [URL=\"TopLevel.dot.svg\" shape=\"rectangle\"]; \n")
         pl("}")
       case _ =>
         println(s"could not find top module $startModuleName")
