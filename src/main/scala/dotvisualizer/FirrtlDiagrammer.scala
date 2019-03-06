@@ -40,6 +40,8 @@ case class SetOpenProgram(openProgram: String) extends OptionAnnotation
 
 case class DotTimeOut(seconds: Int) extends OptionAnnotation
 
+case object UseRankAnnotation extends OptionAnnotation
+
 object FirrtlDiagrammer {
 
   var dotTimeOut = 7
@@ -184,7 +186,7 @@ object FirrtlDiagrammer {
       transform.execute(circuitState)
     }
 
-    val fileName = s"${targetDir}${circuitState.circuit.main}_hierarchy.dot"
+    val fileName = s"$targetDir${circuitState.circuit.main}_hierarchy.dot"
     val openProgram = controlAnnotations.collectFirst {
       case SetOpenProgram(program) => program
     }.getOrElse("open")
@@ -217,6 +219,10 @@ object FirrtlDiagrammer {
               .action { (_, c) => c.copy(justTopLevel = true) }
               .text("use this to only see the top level view")
 
+      opt[Unit]('j', "rank-elements")
+              .action { (_, c) => c.copy(useRanking = true) }
+              .text("tries to rank elements by depth from inputs")
+
       opt[Int]('s', "dot-timeout-seconds")
               .action { (x, c) => c.copy(dotTimeOut = x) }
               .text("use this to only see the top level view")
@@ -238,7 +244,8 @@ case class Config(
   openProgram:      String = Config.getOpenForOs,
   targetDir:        String = "",
   justTopLevel:     Boolean = false,
-  dotTimeOut:       Int     = 7
+  dotTimeOut:       Int     = 7,
+  useRanking:       Boolean = false
 ) {
   def toAnnotations: Seq[Annotation] = {
     val dir = {
@@ -256,7 +263,8 @@ case class Config(
       TargetDirAnnotation(dir),
       DotTimeOut(dotTimeOut)
     ) ++
-    (if(startModuleName.nonEmpty) Seq(StartModule(startModuleName)) else Seq.empty)
+    (if(startModuleName.nonEmpty) Seq(StartModule(startModuleName)) else Seq.empty) ++
+    (if(useRanking) Seq(UseRankAnnotation) else Seq.empty)
   }
 }
 

@@ -5,7 +5,7 @@ package dotvisualizer.transforms
 import java.io.PrintWriter
 
 import dotvisualizer.dotnodes._
-import dotvisualizer.{FirrtlDiagrammer, Scope, StartModule}
+import dotvisualizer.{FirrtlDiagrammer, Scope, StartModule, UseRankAnnotation}
 import firrtl.PrimOps._
 import firrtl.ir._
 import firrtl.{CircuitForm, CircuitState, LowForm}
@@ -38,6 +38,8 @@ class MakeOneDiagram extends Transform {
 
     var linesPrintedSinceFlush = 0
     var totalLinesPrinted = 0
+
+    val useRanking = state.annotations.collectFirst { case UseRankAnnotation => UseRankAnnotation}.isDefined
 
     val printFileName = s"$targetDir$startModuleName.dot"
     println(s"creating dot file $printFileName")
@@ -250,7 +252,7 @@ class MakeOneDiagram extends Transform {
             case port if port.direction == dir =>
               val portNode = PortNode(
                 port.name, Some(moduleNode),
-                if(moduleNode.parentOpt.isEmpty) 0 else 1,
+                rank = if(port.direction == firrtl.ir.Input) 0 else 1000,
                 port.direction == firrtl.ir.Input
               )
               nameToNode(getFirrtlName(port.name)) = portNode
@@ -371,6 +373,7 @@ class MakeOneDiagram extends Transform {
         pl("rankdir=\"LR\"")
         //        pl(s"graph [splines=ortho];")
         val topModuleNode = ModuleNode(startModuleName, parentOpt = None)
+        if(useRanking) topModuleNode.renderWithRank = true
         processModule("", topModule, topModuleNode, Scope(0, 1))
         //        processModule("", topModule, topModuleNode, getScope(topModule.name))
         pl(topModuleNode.render)

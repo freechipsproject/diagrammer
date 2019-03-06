@@ -5,6 +5,7 @@ package dotvisualizer.dotnodes
 import java.io.{File, PrintWriter}
 
 import dotvisualizer.transforms.MakeOneDiagram
+import firrtl.graph.DiGraph
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -15,6 +16,8 @@ case class ModuleNode(
   var url_string: Option[String]= None,
   subModuleDepth: Int = 0
 ) extends DotNode {
+
+  var renderWithRank: Boolean = false
 
   val inputs: ArrayBuffer[DotNode] = new ArrayBuffer()
   val outputs: ArrayBuffer[DotNode] = new ArrayBuffer()
@@ -31,10 +34,81 @@ case class ModuleNode(
   val backgroundColorIndex: Int = subModuleDepth % MakeOneDiagram.subModuleColorsByDepth.length
   val backgroundColor: String = MakeOneDiagram.subModuleColorsByDepth(backgroundColorIndex)
 
+  //scalastyle:off method.length cyclomatic.complexity
+  def constructRankDirectives: String = {
+    val inputNames = children.collect { case p: PortNode if p.isInput => p }.map(_.absoluteName)
+    val outputPorts = children.collect { case p: PortNode if ! p.isInput => p }.map(_.absoluteName)
+
+    println(s"in module $absoluteName")
+
+    val diGraph = {
+      val linkedHashMap = new mutable.LinkedHashMap[String, mutable.LinkedHashSet[String]] {
+        override def default(key: String): mutable.LinkedHashSet[String] = {
+          this(key) = new mutable.LinkedHashSet[String]
+          this(key)
+        }
+      }
+
+      connections.foreach { case (rhs, lhs) =>
+        val source = lhs.split(":").head
+        val target = namedNodes.get(rhs) match {
+          case Some(node) if node.isInstanceOf[PortNode] =>
+            node.parentOpt match {
+              case Some(parent) => parent.absoluteName
+              case _ => rhs.split(":").head
+            }
+          case _ =>
+            rhs.split(":").head
+        }
+
+        if(target.nonEmpty && ! outputPorts.contains(target)) {
+          linkedHashMap(source) += target
+          linkedHashMap(target)
+        }
+      }
+      DiGraph(linkedHashMap)
+    }
+
+    val sources = diGraph.findSources.filter(inputNames.contains).toSeq
+
+    def getRankedNodes: mutable.ArrayBuffer[Seq[String]] = {
+      val alreadyVisited = new mutable.HashSet[String]()
+      val rankNodes = new mutable.ArrayBuffer[Seq[String]]()
+
+      def walkByRank(nodes: Seq[String], rankNumber: Int = 0): Unit = {
+        rankNodes.append(nodes)
+
+        alreadyVisited ++= nodes
+
+        val nextNodes = nodes.flatMap { node =>
+          diGraph.getEdges(node)
+        }.filterNot(alreadyVisited.contains).distinct
+
+        if(nextNodes.nonEmpty) {
+          walkByRank(nextNodes, rankNumber + 1)
+        }
+      }
+
+      walkByRank(sources)
+      rankNodes
+    }
+
+    val rankedNodes = getRankedNodes
+
+    val rankInfo = rankedNodes.map {
+      nodesAtRank => s"""  { rank=same; ${nodesAtRank.mkString(" ")} };"""
+    }.mkString("\n")
+
+    rankInfo + "\n" + s"""{ rank=same; ${outputPorts.mkString(" ")} };"""
+  }
+
+  //scalastyle:off method.length
   def render: String = {
     def expandBiConnects(target: String, sources: ArrayBuffer[String]): String = {
       sources.map { vv => s"""$vv -> $target [dir = "both"]"""  }.mkString("\n")
     }
+
+    val rankInfo = if(renderWithRank) constructRankDirectives else ""
 
     val s = s"""
        |subgraph $absoluteName {
@@ -47,6 +121,8 @@ case class ModuleNode(
        |
        |  ${connections.map { case (k, v) => s"$v -> $k"}.mkString("\n")}
        |  ${analogConnections.map { case (k, v) => expandBiConnects(k, v) }.mkString("\n")}
+       |
+       |  $rankInfo
        |}
      """.stripMargin
     s
@@ -81,7 +157,7 @@ case class ModuleNode(
 
   //scalastyle:off method.name
   def += (childNode: DotNode): Unit = {
-    namedNodes(childNode.name) = childNode
+    namedNodes(childNode.absoluteName) = childNode
     children += childNode
   }
 }
