@@ -4,9 +4,7 @@ package dotvisualizer
 
 import java.io.{File, PrintWriter}
 
-import chisel3.experimental
-import chisel3.experimental.{ChiselAnnotation, RunFirrtlTransform}
-import chisel3.internal.InstanceId
+import chisel3.experimental.ChiselAnnotation
 import dotvisualizer.transforms.{MakeDiagramGroup, ModuleLevelDiagrammer}
 import firrtl._
 import firrtl.annotations._
@@ -15,10 +13,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, TimeoutException, blocking}
 import scala.sys.process._
-
-//TODO: MONICA: Implement depth
-//TODO: Make input and output separate colors
-//TODO: Make modules at different levels separate colors
 
 //scalastyle:off magic.number
 //scalastyle:off regex
@@ -39,6 +33,8 @@ case class SetRenderProgram(renderProgram: String = "dot") extends OptionAnnotat
 case class SetOpenProgram(openProgram: String) extends OptionAnnotation
 
 case class DotTimeOut(seconds: Int) extends OptionAnnotation
+
+case class RankDirAnnotation(rankDir: String) extends OptionAnnotation
 
 case object UseRankAnnotation extends OptionAnnotation
 
@@ -219,6 +215,10 @@ object FirrtlDiagrammer {
               .action { (_, c) => c.copy(justTopLevel = true) }
               .text("use this to only see the top level view")
 
+      opt[String]('o', "rank-dir")
+              .action { (x, c) => c.copy(rankDir = x) }
+              .text("use to set ranking direction, default is LR, TB is good alternative")
+
       opt[Unit]('j', "rank-elements")
               .action { (_, c) => c.copy(useRanking = true) }
               .text("tries to rank elements by depth from inputs")
@@ -245,7 +245,8 @@ case class Config(
   targetDir:        String = "",
   justTopLevel:     Boolean = false,
   dotTimeOut:       Int     = 7,
-  useRanking:       Boolean = false
+  useRanking:       Boolean = false,
+  rankDir:          String  = "LR"
 ) {
   def toAnnotations: Seq[Annotation] = {
     val dir = {
@@ -261,7 +262,8 @@ case class Config(
       SetRenderProgram(renderProgram),
       SetOpenProgram(openProgram),
       TargetDirAnnotation(dir),
-      DotTimeOut(dotTimeOut)
+      DotTimeOut(dotTimeOut),
+      RankDirAnnotation(rankDir)
     ) ++
     (if(startModuleName.nonEmpty) Seq(StartModule(startModuleName)) else Seq.empty) ++
     (if(useRanking) Seq(UseRankAnnotation) else Seq.empty)

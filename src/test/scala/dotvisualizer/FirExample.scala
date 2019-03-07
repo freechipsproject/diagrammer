@@ -24,7 +24,9 @@ class FirExampleSpec extends FreeSpec with Matchers {
   """This is an example of an FIR circuit which has a lot of elements in a single module""" in {
     val circuit = chisel3.Driver.elaborate(() => new MyManyDynamicElementVecFir(10))
     val firrtl = chisel3.Driver.emit(circuit)
-    val config = Config(targetDir = "test_run_dir/fir_example/", firrtlSource = firrtl)
+    val config = Config(
+      targetDir = "test_run_dir/fir_example/", firrtlSource = firrtl, rankDir = "TB", useRanking = true
+    )
     FirrtlDiagrammer.run(config)
   }
 }

@@ -4,12 +4,11 @@ package dotvisualizer.transforms
 
 import java.io.PrintWriter
 
+import dotvisualizer._
 import dotvisualizer.dotnodes._
-import dotvisualizer.{FirrtlDiagrammer, Scope, StartModule, UseRankAnnotation}
 import firrtl.PrimOps._
 import firrtl.ir._
-import firrtl.{CircuitForm, CircuitState, LowForm}
-import firrtl.{Transform, WDefInstance, WRef, WSubField, WSubIndex}
+import firrtl.{CircuitForm, CircuitState, LowForm, Transform, WDefInstance, WRef, WSubField, WSubIndex}
 
 import scala.collection.mutable
 
@@ -40,6 +39,8 @@ class MakeOneDiagram extends Transform {
     var totalLinesPrinted = 0
 
     val useRanking = state.annotations.collectFirst { case UseRankAnnotation => UseRankAnnotation}.isDefined
+
+    val rankDir = state.annotations.collectFirst { case RankDirAnnotation(dir) => dir}.getOrElse("LR")
 
     val printFileName = s"$targetDir$startModuleName.dot"
     println(s"creating dot file $printFileName")
@@ -332,6 +333,8 @@ class MakeOneDiagram extends Transform {
 
             processModule(newPrefix, subModule, subModuleNode, scope.descend, subModuleDepth + 1)
 
+            moduleNode.subModuleNames += subModuleNode.absoluteName
+
           case DefNode(_, name, expression) if scope.doComponents() =>
             val fName = getFirrtlName(name)
             val nodeNode = NodeNode(name, Some(moduleNode))
@@ -369,15 +372,17 @@ class MakeOneDiagram extends Transform {
     findModule(startModuleName, c) match {
       case topModule: DefModule =>
         pl(s"digraph ${topModule.name} {")
-        pl("""stylesheet = "styles.css"""")
-        pl("rankdir=\"LR\"")
+        pl(s"""stylesheet = "styles.css"""")
+        pl(s"""rankdir="$rankDir" """)
         //        pl(s"graph [splines=ortho];")
         val topModuleNode = ModuleNode(startModuleName, parentOpt = None)
         if(useRanking) topModuleNode.renderWithRank = true
         processModule("", topModule, topModuleNode, Scope(0, 1))
         //        processModule("", topModule, topModuleNode, getScope(topModule.name))
+
         pl(topModuleNode.render)
         //pl("\"Modules Only View Here\" [URL=\"TopLevel.dot.svg\" shape=\"rectangle\"]; \n")
+
         pl("}")
       case _ =>
         println(s"could not find top module $startModuleName")
