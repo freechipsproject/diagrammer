@@ -37,8 +37,6 @@ case class ModuleNode(
     val inputNames = children.collect { case p: PortNode if p.isInput => p }.map(_.absoluteName)
     val outputPorts = children.collect { case p: PortNode if ! p.isInput => p }.map(_.absoluteName)
 
-//    val sortedSubmodules = subModuleNames.toSeq.sorted.reverse
-
     val diGraph = {
       val linkedHashMap = new mutable.LinkedHashMap[String, mutable.LinkedHashSet[String]] {
         override def default(key: String): mutable.LinkedHashSet[String] = {
@@ -47,31 +45,11 @@ case class ModuleNode(
         }
       }
 
-//      def mapToSubmoduleContainer(componentName: String): String = {
-//        sortedSubmodules.find { subModuleName =>
-//          componentName.take(subModuleName.length) == subModuleName
-//        } match {
-//          case Some(_) => ""
-//          case _ => componentName
-//        }
-//      }
-
       val connectionTargetNames = connections.values.map(_.split(":").head).toSet
 
       connections.foreach { case (rhs, lhs) =>
         val source = lhs.split(":").head
         val target = rhs.split(":").head
-//        val target = namedNodes.get(rhs) match {
-//          case Some(node) if node.isInstanceOf[PortNode] =>
-//            node.parentOpt match {
-//              case Some(parent) =>
-//                mapToSubmoduleContainer(parent.absoluteName)
-//              case _ =>
-//                mapToSubmoduleContainer(rhs.split(":").head)
-//            }
-//          case _ =>
-//            mapToSubmoduleContainer(rhs.split(":").head)
-//        }
 
         if(target.nonEmpty && connectionTargetNames.contains(target)) {
           linkedHashMap(source) += target
@@ -114,7 +92,10 @@ case class ModuleNode(
     rankInfo + "\n  " + s"""{ rank=same; ${outputPorts.mkString(" ")} };"""
   }
 
-  //scalastyle:off method.length
+  /**
+    * Renders this node
+    * @return
+    */
   def render: String = {
     def expandBiConnects(target: String, sources: ArrayBuffer[String]): String = {
       sources.map { vv => s"""$vv -> $target [dir = "both"]"""  }.mkString("\n")

@@ -374,14 +374,12 @@ class MakeOneDiagram extends Transform {
         pl(s"digraph ${topModule.name} {")
         pl(s"""stylesheet = "styles.css"""")
         pl(s"""rankdir="$rankDir" """)
-        //        pl(s"graph [splines=ortho];")
+        //TODO: make this an option -- pl(s"graph [splines=ortho];")
         val topModuleNode = ModuleNode(startModuleName, parentOpt = None)
         if(useRanking) topModuleNode.renderWithRank = true
         processModule("", topModule, topModuleNode, Scope(0, 1))
-        //        processModule("", topModule, topModuleNode, getScope(topModule.name))
 
         pl(topModuleNode.render)
-        //pl("\"Modules Only View Here\" [URL=\"TopLevel.dot.svg\" shape=\"rectangle\"]; \n")
 
         pl("}")
       case _ =>
