@@ -13,7 +13,7 @@ trait CrossUnRootedSbtModule extends CrossSbtModule {
 }
 
 trait CommonModule extends CrossUnRootedSbtModule with PublishModule {
-  def publishVersion = "1.0-SNAPSHOT"
+  def publishVersion = "1.1-SNAPSHOT"
 
   def pomSettings = PomSettings(
     description = artifactName(),

@@ -5,7 +5,7 @@ resolvers ++= Seq(
   Resolver.sonatypeRepo("releases")
 )
 organization := "edu.berkeley.cs"
-version := "1.0-SNAPSHOT"
+version := "1.1-SNAPSHOT"
 autoAPIMappings := true
 scalaVersion := "2.12.7"
 crossScalaVersions := Seq("2.12.7", "2.11.12")
