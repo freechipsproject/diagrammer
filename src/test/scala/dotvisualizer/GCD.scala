@@ -30,7 +30,7 @@ class GCDTester extends FreeSpec with Matchers {
   "GCD circuit to visualize" in {
     val circuit = chisel3.Driver.elaborate(() => new GCD)
     val firrtl = chisel3.Driver.emit(circuit)
-    val config = Config(targetDir = "test_run_dir/gcd/", firrtlSource = firrtl)
+    val config = Config(targetDir = "test_run_dir/gcd/", firrtlSource = firrtl, useRanking = true)
     FirrtlDiagrammer.run(config)
   }
 }
