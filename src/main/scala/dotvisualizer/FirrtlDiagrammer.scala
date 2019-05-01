@@ -7,7 +7,7 @@ import java.io.{File, PrintWriter}
 import chisel3.experimental.ChiselAnnotation
 import dotvisualizer.transforms.{MakeDiagramGroup, ModuleLevelDiagrammer}
 import firrtl._
-import firrtl.stage.TargetDirAnnotation
+import firrtl.options.TargetDirAnnotation
 import firrtl.annotations._
 
 import scala.concurrent.ExecutionContext.Implicits.global
