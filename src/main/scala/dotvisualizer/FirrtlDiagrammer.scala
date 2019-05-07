@@ -7,6 +7,7 @@ import java.io.{File, PrintWriter}
 import chisel3.experimental.ChiselAnnotation
 import dotvisualizer.transforms.{MakeDiagramGroup, ModuleLevelDiagrammer}
 import firrtl._
+import firrtl.options.TargetDirAnnotation
 import firrtl.annotations._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -215,11 +216,11 @@ object FirrtlDiagrammer {
               .action { (_, c) => c.copy(justTopLevel = true) }
               .text("use this to only see the top level view")
 
-      opt[String]('o', "rank-dir")
+      opt[String]('d', "rank-dir")
               .action { (x, c) => c.copy(rankDir = x) }
               .text("use to set ranking direction, default is LR, TB is good alternative")
 
-      opt[Unit]('j', "rank-elements")
+      opt[Unit]('r', "rank-elements")
               .action { (_, c) => c.copy(useRanking = true) }
               .text("tries to rank elements by depth from inputs")
 
@@ -256,7 +257,9 @@ case class Config(
       else {
         targetDir
       }
-      if(baseDir.endsWith("/")) baseDir else baseDir + "/"
+      if(baseDir.isEmpty) { "./" }
+      else if(baseDir.endsWith("/")) { baseDir }
+      else { baseDir + "/" }
     }
     Seq(
       SetRenderProgram(renderProgram),
