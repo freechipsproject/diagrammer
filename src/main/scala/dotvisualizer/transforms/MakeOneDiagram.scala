@@ -42,6 +42,8 @@ class MakeOneDiagram extends Transform {
 
     val rankDir = state.annotations.collectFirst { case RankDirAnnotation(dir) => dir}.getOrElse("LR")
 
+    val showPrintfs = state.annotations.collectFirst { case ShowPrintfsAnnotation => ShowPrintfsAnnotation}.isDefined
+
     val printFileName = s"$targetDir$startModuleName.dot"
     println(s"creating dot file $printFileName")
     val printFile = new PrintWriter(new java.io.File(printFileName))
@@ -106,10 +108,14 @@ class MakeOneDiagram extends Transform {
         s"${moduleNode.absoluteName}_$name".replaceAll("""\.""", "_")
       }
 
+      def reducedLongLiteral(s: String): String = {
+        if(s.length > 32) { s.take(16) + "..." + s.takeRight(16) } else { s }
+      }
+
       def getLiteralValue(expression: Expression): Option[String] = {
         expression match {
-          case UIntLiteral(x, _) => Some(x.toString)
-          case SIntLiteral(x, _) => Some(x.toString)
+          case UIntLiteral(x, _) => Some(reducedLongLiteral(x.toString))
+          case SIntLiteral(x, _) => Some(reducedLongLiteral(x.toString))
           case _                 => None
         }
       }
@@ -275,6 +281,26 @@ class MakeOneDiagram extends Transform {
         moduleNode += memNode
       }
 
+      def processPrintf(printf: Print): Unit = {
+        val nodeName = s"printf_${printf.hashCode().abs}"
+        val printfNode = PrintfNode(nodeName, printf.string.serialize, Some(moduleNode))
+
+        printf.args.foreach { arg =>
+          val displayName = arg.serialize
+          val connectTarget = s"${printfNode.absoluteName}:$displayName"
+          val processedARg = processExpression(arg)
+
+          val port = printfNode.addArgument(displayName, connectTarget, processedARg)
+          nameToNode(connectTarget) = port
+
+          moduleNode.connect(connectTarget, processedARg)
+        }
+        printfNode.finish()
+
+
+        moduleNode += printfNode
+      }
+
       def getConnectInfo(expression: Expression): String = {
         val (fName, dotName) = expression match {
           case WRef(name, _, _, _) => (getFirrtlName(name), expand(name))
@@ -349,6 +375,8 @@ class MakeOneDiagram extends Transform {
             val regNode = RegisterNode(reg.name, Some(moduleNode))
             nameToNode(getFirrtlName(reg.name)) = regNode
             moduleNode += regNode
+          case printf: Print if showPrintfs =>
+            processPrintf(printf)
           case memory: DefMemory if scope.doComponents() =>
             processMemory(memory)
           case _ =>

@@ -39,6 +39,8 @@ case class RankDirAnnotation(rankDir: String) extends OptionAnnotation
 
 case object UseRankAnnotation extends OptionAnnotation
 
+case object ShowPrintfsAnnotation extends OptionAnnotation
+
 object FirrtlDiagrammer {
 
   var dotTimeOut = 7
@@ -156,7 +158,7 @@ object FirrtlDiagrammer {
         config.firrtlSource
       }
       else {
-        io.Source.fromFile(config.firrtlSourceFile).getLines().mkString("\n")
+       FileUtils.getText(config.firrtlSourceFile)
       }
     }
 
@@ -224,9 +226,13 @@ object FirrtlDiagrammer {
               .action { (_, c) => c.copy(useRanking = true) }
               .text("tries to rank elements by depth from inputs")
 
+      opt[Unit]('p', "show-printfs")
+              .action { (_, c) => c.copy(showPrintfs = true) }
+              .text("render printfs showing arguments")
+
       opt[Int]('s', "dot-timeout-seconds")
               .action { (x, c) => c.copy(dotTimeOut = x) }
-              .text("use this to only see the top level view")
+              .text("gives up trying to diagram a module after 7 seconds, this increases that time")
     }
 
     parser.parse(args, Config()) match {
@@ -247,7 +253,8 @@ case class Config(
   justTopLevel:     Boolean = false,
   dotTimeOut:       Int     = 7,
   useRanking:       Boolean = false,
-  rankDir:          String  = "LR"
+  rankDir:          String  = "LR",
+  showPrintfs:      Boolean = false
 ) {
   def toAnnotations: Seq[Annotation] = {
     val dir = {
@@ -269,7 +276,8 @@ case class Config(
       RankDirAnnotation(rankDir)
     ) ++
     (if(startModuleName.nonEmpty) Seq(StartModule(startModuleName)) else Seq.empty) ++
-    (if(useRanking) Seq(UseRankAnnotation) else Seq.empty)
+    (if(useRanking) Seq(UseRankAnnotation) else Seq.empty) ++
+    (if(showPrintfs) Seq(ShowPrintfsAnnotation) else Seq.empty)
   }
 }
 
