@@ -106,10 +106,14 @@ class MakeOneDiagram extends Transform {
         s"${moduleNode.absoluteName}_$name".replaceAll("""\.""", "_")
       }
 
+      def reducedLongLiteral(s: String): String = {
+        if(s.length > 32) { s.take(16) + "..." + s.takeRight(16) } else { s }
+      }
+
       def getLiteralValue(expression: Expression): Option[String] = {
         expression match {
-          case UIntLiteral(x, _) => Some(x.toString)
-          case SIntLiteral(x, _) => Some(x.toString)
+          case UIntLiteral(x, _) => Some(reducedLongLiteral(x.toString))
+          case SIntLiteral(x, _) => Some(reducedLongLiteral(x.toString))
           case _                 => None
         }
       }

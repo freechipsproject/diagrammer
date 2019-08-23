@@ -156,7 +156,7 @@ object FirrtlDiagrammer {
         config.firrtlSource
       }
       else {
-        io.Source.fromFile(config.firrtlSourceFile).getLines().mkString("\n")
+       FileUtils.getText(config.firrtlSourceFile)
       }
     }
 
@@ -226,7 +226,7 @@ object FirrtlDiagrammer {
 
       opt[Int]('s', "dot-timeout-seconds")
               .action { (x, c) => c.copy(dotTimeOut = x) }
-              .text("use this to only see the top level view")
+              .text("gives up trying to diagram a module after 7 seconds, this increases that time")
     }
 
     parser.parse(args, Config()) match {
