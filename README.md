@@ -10,11 +10,11 @@ Also, an individual arrow can be hovered over to make it turn red and become eas
 ## Example
 
 ### Top Level Example
-![Graph](images/TopLevel.dot.svg)
+![Graph](https://raw.githubusercontent.com/freechipsproject/diagrammer/master/images/TopLevel.dot.svg?sanitize=true)
 
 ### Module Example
 
-![Graph](images/TopOfVisualizer.dot.svg)
+![Graph](https://raw.githubusercontent.com/freechipsproject/diagrammer/master/images/TopOfVisualizer.dot.svg?sanitize=true)
 
 ## Using
 ### Install
