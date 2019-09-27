@@ -67,6 +67,10 @@ object diagrammer extends Cross[DiagrammerModule](crossVersions: _*) {
   def docJar = T{
     diagrammer(crossVersions.head).docJar()
   }
+
+  def assembly = T{
+    diagrammer(crossVersions.head).assembly()
+  }
 }
 
 // Provide a managed dependency on X if -DXVersion="" is supplied on the command line.
