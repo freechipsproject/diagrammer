@@ -44,7 +44,7 @@ val crossVersions = Seq("2.12.7", "2.11.12")
 
 // Make this available to external tools.
 object diagrammer extends Cross[DiagrammerModule](crossVersions: _*) {
-  def defaultVersion(ev: Evaluator[Any]) = T.command{
+  def defaultVersion(ev: Evaluator) = T.command{
     println(crossVersions.head)
   }
 
@@ -66,6 +66,10 @@ object diagrammer extends Cross[DiagrammerModule](crossVersions: _*) {
 
   def docJar = T{
     diagrammer(crossVersions.head).docJar()
+  }
+
+  def assembly = T{
+    diagrammer(crossVersions.head).assembly()
   }
 }
 
