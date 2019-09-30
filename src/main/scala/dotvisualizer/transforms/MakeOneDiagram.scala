@@ -286,14 +286,20 @@ class MakeOneDiagram extends Transform {
         val printfNode = PrintfNode(nodeName, printf.string.serialize, Some(moduleNode))
 
         printf.args.foreach { arg =>
-          val displayName = arg.serialize
-          val connectTarget = s"${printfNode.absoluteName}:$displayName"
-          val processedARg = processExpression(arg)
 
-          val port = printfNode.addArgument(displayName, connectTarget, processedARg)
+          val displayName = arg.serialize
+            .replaceAll("[<]", "&lt;")
+            .replaceAll("[>]", "&gt;")
+            .replaceAll("[(]", "&#40;")
+            .replaceAll("[)]", "&#41;")
+          val connectCode = s"${displayName.hashCode.abs}"
+          val connectTarget = s"${printfNode.absoluteName}:$connectCode"
+          val processedArg = processExpression(arg)
+
+          val port = printfNode.addArgument(displayName, connectCode, processedArg)
           nameToNode(connectTarget) = port
 
-          moduleNode.connect(connectTarget, processedARg)
+          moduleNode.connect(connectTarget, processedArg)
         }
         printfNode.finish()
 

@@ -42,7 +42,7 @@ case class PrintfArgument(name: String, override val absoluteName: String, conne
   val parentOpt : Option[DotNode] = None // doesn't need to know parent
   def render: String = {
     s"""
-      |<TR><TD PORT="$name">$name</TD></TR>
+      |<TR><TD PORT="$connectTarget">$name</TD></TR>
     """.stripMargin
   }
 }
