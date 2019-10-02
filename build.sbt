@@ -5,7 +5,7 @@ resolvers ++= Seq(
   Resolver.sonatypeRepo("releases")
 )
 organization := "edu.berkeley.cs"
-version := "1.1.0-RC2"
+version := "1.1-100219-SNAPSHOT"
 autoAPIMappings := true
 scalaVersion := "2.12.7"
 crossScalaVersions := Seq("2.12.7", "2.11.12")
@@ -81,11 +81,11 @@ publishTo := {
 
 // Provide a managed dependency on X if -DXVersion="" is supplied on the command line.
 val defaultVersions = Map(
-  "chisel3" -> "3.2.0-RC2"
+  "chisel3" -> "3.2-100219-SNAPSHOT"
 )
 
-libraryDependencies ++= (Seq("chisel3").map {
-  dep: String => "edu.berkeley.cs" %% dep % sys.props.getOrElse(dep + "Version", defaultVersions(dep)) })
+libraryDependencies ++= Seq("chisel3").map {
+  dep: String => "edu.berkeley.cs" %% dep % sys.props.getOrElse(dep + "Version", defaultVersions(dep)) }
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.0.8" % "test",
@@ -96,3 +96,13 @@ libraryDependencies ++= Seq(
 scalacOptions ++= scalacOptionsVersion(scalaVersion.value)
 
 javacOptions ++= javacOptionsVersion(scalaVersion.value)
+
+
+// Assembly
+
+assemblyJarName in assembly := "diagrammer.jar"
+
+test in assembly := {} // Should there be tests?
+
+assemblyOutputPath in assembly := file("./utils/bin/diagrammer.jar")
+

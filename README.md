@@ -60,5 +60,5 @@ for a good introduction to writing Firrtl transforms
 ## TODO
 - This used to work by annotating a circuit, consider re-adding that
 - Setting to allow the graphs to go deeper into sub-module logic
-- Big firrtl modules that take more than 7 seconds to render are stopped, try and fix this. 
+- Provide links to the chisel source
 
