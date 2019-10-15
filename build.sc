@@ -82,7 +82,7 @@ def getVersion(dep: String, org: String = "edu.berkeley.cs") = {
 }
 
 class DiagrammerModule(val crossScalaVersion: String) extends CommonModule {
-  override def artifactName = "diagrammer"
+  override def artifactName = "firrtl-diagrammer"
 
   def chiselDeps = Agg("chisel3").map { d => getVersion(d) }
 
