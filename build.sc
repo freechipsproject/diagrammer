@@ -88,13 +88,13 @@ class DiagrammerModule(val crossScalaVersion: String) extends CommonModule {
 
   override def ivyDeps = Agg(
     ivy"org.scala-lang.modules:scala-jline:2.12.1",
-    ivy"org.json4s::json4s-native:3.5.3"
+    ivy"org.json4s::json4s-native:3.6.7"
   ) ++ chiselDeps
 
   object test extends Tests {
     override def ivyDeps = Agg(
       ivy"org.scalatest::scalatest:3.0.8",
-      ivy"org.scalacheck::scalacheck:1.14.0"
+      ivy"org.scalacheck::scalacheck:1.14.3"
     )
     def testFrameworks = Seq("org.scalatest.tools.Framework")
   }
