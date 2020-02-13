@@ -17,7 +17,8 @@ limitations under the License.
 package dotvisualizer
 
 import chisel3._
-import org.scalatest.{FreeSpec, Matchers}
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
 
 class GCD extends Module {
   //noinspection TypeAnnotation
@@ -40,7 +41,7 @@ class GCD extends Module {
   io.v := y === 0.U
 }
 
-class GCDTester extends FreeSpec with Matchers {
+class GCDTester extends AnyFreeSpec with Matchers {
   "GCD circuit to visualize" in {
     val circuit = chisel3.Driver.elaborate(() => new GCD)
     val firrtl = chisel3.Driver.emit(circuit)

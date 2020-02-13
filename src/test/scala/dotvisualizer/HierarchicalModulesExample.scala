@@ -18,6 +18,8 @@ package dotvisualizer
 
 import chisel3._
 import org.scalatest._
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
 
 /**
   * Circuit Top instantiates A and B and both A and B instantiate C
@@ -109,7 +111,7 @@ class TopOfVisualizer extends Module {
   modC.io.in := x
 }
 
-class HierarchicalModulesExample extends FreeSpec with Matchers {
+class HierarchicalModulesExample extends AnyFreeSpec with Matchers {
 
   """This is an example of a module with hierarchical submodules """  in {
     val circuit = chisel3.Driver.elaborate(() => new TopOfVisualizer)
