@@ -17,14 +17,15 @@ limitations under the License.
 package dotvisualizer
 
 import firrtl.FileUtils
-import org.scalatest.{FreeSpec, Matchers}
 
 import scala.io.Source
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
 
 /**
   * Checks that attaches are double headed arrows connected to each node
   */
-class AttachExample extends FreeSpec with Matchers {
+class AttachExample extends AnyFreeSpec with Matchers {
 
   """This example contains Analog Connects""" in {
     val dir = "test_run_dir/attach"
