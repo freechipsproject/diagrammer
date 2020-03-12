@@ -7,8 +7,8 @@ resolvers ++= Seq(
 organization := "edu.berkeley.cs"
 version := "1.2-SNAPSHOT"
 autoAPIMappings := true
-scalaVersion := "2.12.7"
-crossScalaVersions := Seq("2.12.7", "2.11.12")
+scalaVersion := "2.12.10"
+crossScalaVersions := Seq("2.12.10", "2.11.12")
 scalacOptions := Seq("-deprecation", "-feature") ++ scalacOptionsVersion(scalaVersion.value)
 
 def scalacOptionsVersion(scalaVersion: String): Seq[String] = {
