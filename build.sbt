@@ -7,8 +7,8 @@ resolvers ++= Seq(
 organization := "edu.berkeley.cs"
 version := "1.2-SNAPSHOT"
 autoAPIMappings := true
-scalaVersion := "2.12.7"
-crossScalaVersions := Seq("2.12.7", "2.11.12")
+scalaVersion := "2.12.10"
+crossScalaVersions := Seq("2.12.10", "2.11.12")
 scalacOptions := Seq("-deprecation", "-feature") ++ scalacOptionsVersion(scalaVersion.value)
 
 def scalacOptionsVersion(scalaVersion: String): Seq[String] = {
@@ -89,7 +89,7 @@ libraryDependencies ++= Seq("chisel3").map {
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.0.8" % "test",
-  "org.scalacheck" %% "scalacheck" % "1.14.0" % "test",
+  "org.scalacheck" %% "scalacheck" % "1.14.3" % "test",
   "com.github.scopt" %% "scopt" % "3.7.1"
 )
 
