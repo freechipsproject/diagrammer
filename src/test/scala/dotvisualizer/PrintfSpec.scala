@@ -16,9 +16,10 @@ limitations under the License.
 
 package dotvisualizer
 
-import org.scalatest.{FreeSpec, Matchers}
 import chisel3._
 import firrtl.FileUtils
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
 
 class HasPrintf extends MultiIOModule {
   val in = IO(Input(Bool()))
@@ -26,7 +27,7 @@ class HasPrintf extends MultiIOModule {
   out := in
   printf("in %d, out %d\n", in, out)
 }
-class PrintfSpec extends FreeSpec with Matchers {
+class PrintfSpec extends AnyFreeSpec with Matchers {
 
   "printfs can now be rendered" - {
     val dirName = "test_run_dir/has_printf_on/"
