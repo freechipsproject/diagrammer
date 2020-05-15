@@ -17,7 +17,8 @@ limitations under the License.
 package dotvisualizer
 
 import chisel3._
-import org.scalatest.{FreeSpec, Matchers}
+import org.scalatest.freespec.AnyFreeSpec
+import org.scalatest.matchers.should.Matchers
 
 class MyManyDynamicElementVecFir(length: Int) extends Module {
   //noinspection TypeAnnotation
@@ -33,7 +34,7 @@ class MyManyDynamicElementVecFir(length: Int) extends Module {
   io.out := taps.zip(io.consts).map { case (a, b) => a * b }.reduce(_ + _)
 }
 
-class FirExampleSpec extends FreeSpec with Matchers {
+class FirExampleSpec extends AnyFreeSpec with Matchers {
 
   """This is an example of an FIR circuit which has a lot of elements in a single module""" in {
     val circuit = chisel3.Driver.elaborate(() => new MyManyDynamicElementVecFir(10))
