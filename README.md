@@ -61,4 +61,3 @@ for a good introduction to writing Firrtl transforms
 - This used to work by annotating a circuit, consider re-adding that
 - Setting to allow the graphs to go deeper into sub-module logic
 - Provide links to the chisel source
-
