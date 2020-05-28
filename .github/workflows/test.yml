@@ -103,6 +103,6 @@ jobs:
       - name: test
         id: test
         run: |
-          mkdir -p ~/bin && ln -s `which true` ~/bin/xdg-open && export PATH=~/bin:$PATH
-          cat /dev/null | sbt $versionDeps +test
+          mkdir -p ~/bin && ln -s `which true` ~/bin/xdg-open
+          export PATH=~/bin:$PATH && cat /dev/null | sbt $versionDeps +test
         working-directory: ./repo
