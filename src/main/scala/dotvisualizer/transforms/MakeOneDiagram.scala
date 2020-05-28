@@ -237,7 +237,7 @@ class MakeOneDiagram extends Transform {
             muxNode.asRhs
           case WRef(name, _, _, _) =>
             resolveRef(getFirrtlName(name), expand(name))
-          case Reference(name, _) =>
+          case Reference(name, _, _, _) =>
             resolveRef(getFirrtlName(name), expand(name))
           case subfield: WSubField =>
             resolveRef(getFirrtlName(subfield.serialize), expand(subfield.serialize))
@@ -324,7 +324,7 @@ class MakeOneDiagram extends Transform {
       def getConnectInfo(expression: Expression): String = {
         val (fName, dotName) = expression match {
           case WRef(name, _, _, _) => (getFirrtlName(name), expand(name))
-          case Reference(name, _) => (getFirrtlName(name), expand(name))
+          case Reference(name, _, _, _) => (getFirrtlName(name), expand(name))
           case subfield: WSubField =>
             (getFirrtlName(subfield.serialize), expand(subfield.serialize))
           case subfield: SubField =>
