@@ -102,5 +102,7 @@ jobs:
           echo "versonDeps: $versionDeps"
       - name: test
         id: test
-        run: cat /dev/null | sbt $versionDeps +test
+        run: |
+          mkdir -p ~/bin && ln -s `which true` ~/bin/xdg-open && export PATH=~/bin:$PATH
+          cat /dev/null | sbt $versionDeps +test
         working-directory: ./repo
