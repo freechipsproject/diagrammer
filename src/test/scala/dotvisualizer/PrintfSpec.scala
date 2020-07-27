@@ -51,14 +51,14 @@ class PrintfSpec extends AnyFreeSpec with Matchers {
     "showPrintfs=true will render printfs in dot file" in {
       val dotText = makeDotFile(showPrintfs = true)
 
-      dotText.contains("struct_cluster_HasPrintf_printf_1") should be(true)
-      dotText.contains("""printf("in %d, out %d\n")""") should be(true)
+      dotText should include ("struct_cluster_HasPrintf_printf_")
+      dotText should include ("""printf("in %d, out %d\n")""")
     }
 
     "default behavior will not render printfs in dot file" in {
       val dotText = makeDotFile(showPrintfs = false)
 
-      dotText.contains("struct_cluster_HasPrintf_printf_1") should be(false)
+      dotText.contains("struct_cluster_HasPrintf_printf_") should be(false)
       dotText.contains("""printf("in %d, out %d\n")""") should be(false)
     }
   }
