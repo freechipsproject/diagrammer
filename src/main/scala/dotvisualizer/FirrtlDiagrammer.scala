@@ -23,7 +23,7 @@ import dotvisualizer.transforms.{MakeDiagramGroup, ModuleLevelDiagrammer}
 import firrtl._
 import firrtl.options.TargetDirAnnotation
 import firrtl.annotations._
-
+import firrtl.FileUtils.isCommandAvailable
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future, TimeoutException, blocking}
@@ -303,7 +303,7 @@ object Config {
   def getOpenForOs: String = {
     System.getProperty("os.name").toLowerCase match {
       case MacPattern()     => "open"
-      case LinuxPattern()   => "xdg-open"
+      case LinuxPattern() if isCommandAvailable(Seq("xdg-open",  "--help")) => "xdg-open"
       case WindowsPattern() => ""          // no clear agreement here.
       case _                => ""          // punt
     }
