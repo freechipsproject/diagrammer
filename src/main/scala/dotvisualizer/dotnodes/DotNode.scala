@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 package dotvisualizer.dotnodes
 
 import scala.collection.mutable.ArrayBuffer
