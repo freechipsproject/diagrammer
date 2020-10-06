@@ -76,7 +76,7 @@ object diagrammer extends Cross[DiagrammerModule](crossVersions: _*) {
 }
 
 // Provide a managed dependency on X if -DXVersion="" is supplied on the command line.
-val defaultVersions = Map("chisel3" -> "3.4-SNAPSHOT")
+val defaultVersions = Map("chisel3" -> "3.4.0")
 
 def getVersion(dep: String, org: String = "edu.berkeley.cs") = {
   val version = sys.env.getOrElse(dep + "Version", defaultVersions(dep))
