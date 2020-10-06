@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import ammonite.ops._
 import ammonite.ops.ImplicitWd._
 import mill._
