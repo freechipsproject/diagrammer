@@ -16,7 +16,7 @@ import firrtl.stage.FirrtlCli
 class DiagrammerStage extends Stage {
   val shell: Shell = new Shell("chisel") with DiagrammerCli with ChiselCli with FirrtlCli
 
-  override protected def run(annotations: AnnotationSeq): AnnotationSeq = {
+  def run(annotations: AnnotationSeq): AnnotationSeq = {
     (new DiagrammerPhase).transform(annotations)
   }
 }
