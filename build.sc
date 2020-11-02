@@ -24,15 +24,16 @@ trait CommonModule extends CrossUnRootedSbtModule with PublishModule {
     licenses = Seq(License.`BSD-3-Clause`),
     versionControl = VersionControl.github("freechipsproject", "diagrammer"),
     developers = Seq(
-      Developer("chick",    "Charles Markley",     "https://github.com/chick"),
-      Developer("mgnica",   "Monica Kumaran",      "https://github.com/mgnica")
+      Developer("chick", "Charles Markley", "https://github.com/chick"),
+      Developer("mgnica", "Monica Kumaran", "https://github.com/mgnica")
     )
   )
 
   override def scalacOptions = Seq(
     "-deprecation",
     "-explaintypes",
-    "-feature", "-language:reflectiveCalls",
+    "-feature",
+    "-language:reflectiveCalls",
     "-unchecked",
     "-Xcheckinit",
     "-Xlint:infer-any",
@@ -46,31 +47,31 @@ val crossVersions = Seq("2.12.10", "2.11.12")
 
 // Make this available to external tools.
 object diagrammer extends Cross[DiagrammerModule](crossVersions: _*) {
-  def defaultVersion(ev: Evaluator) = T.command{
+  def defaultVersion(ev: Evaluator) = T.command {
     println(crossVersions.head)
   }
 
-  def compile = T{
+  def compile = T {
     diagrammer(crossVersions.head).compile()
   }
 
-  def jar = T{
+  def jar = T {
     diagrammer(crossVersions.head).jar()
   }
 
-  def test = T{
+  def test = T {
     diagrammer(crossVersions.head).test.test()
   }
 
-  def publishLocal = T{
+  def publishLocal = T {
     diagrammer(crossVersions.head).publishLocal()
   }
 
-  def docJar = T{
+  def docJar = T {
     diagrammer(crossVersions.head).docJar()
   }
 
-  def assembly = T{
+  def assembly = T {
     diagrammer(crossVersions.head).assembly()
   }
 }
@@ -103,4 +104,3 @@ class DiagrammerModule(val crossScalaVersion: String) extends CommonModule {
 
   def mainClass = Some("dotvisualizer.FirrtlDiagrammer")
 }
-

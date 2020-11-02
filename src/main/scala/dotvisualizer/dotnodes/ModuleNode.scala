@@ -9,15 +9,15 @@ import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
 case class ModuleNode(
-  name: String,
-  parentOpt: Option[DotNode],
-  var url_string: Option[String]= None,
-  subModuleDepth: Int = 0
-) extends DotNode {
+  name:           String,
+  parentOpt:      Option[DotNode],
+  var url_string: Option[String] = None,
+  subModuleDepth: Int = 0)
+    extends DotNode {
 
   var renderWithRank: Boolean = false
 
-  val namedNodes: mutable.HashMap[String, DotNode] = new mutable.HashMap()
+  val namedNodes:     mutable.HashMap[String, DotNode] = new mutable.HashMap()
   val subModuleNames: mutable.HashSet[String] = new mutable.HashSet[String]()
 
   val connections: mutable.HashMap[String, String] = new mutable.HashMap()
@@ -30,12 +30,11 @@ case class ModuleNode(
   val localConnections: mutable.HashMap[String, String] = new mutable.HashMap()
 
   val backgroundColorIndex: Int = subModuleDepth % MakeOneDiagram.subModuleColorsByDepth.length
-  val backgroundColor: String = MakeOneDiagram.subModuleColorsByDepth(backgroundColorIndex)
+  val backgroundColor:      String = MakeOneDiagram.subModuleColorsByDepth(backgroundColorIndex)
 
-  //scalastyle:off method.length cyclomatic.complexity
   def constructRankDirectives: String = {
     val inputNames = children.collect { case p: PortNode if p.isInput => p }.map(_.absoluteName)
-    val outputPorts = children.collect { case p: PortNode if ! p.isInput => p }.map(_.absoluteName)
+    val outputPorts = children.collect { case p: PortNode if !p.isInput => p }.map(_.absoluteName)
 
     val diGraph = {
       val linkedHashMap = new mutable.LinkedHashMap[String, mutable.LinkedHashSet[String]] {
@@ -47,14 +46,15 @@ case class ModuleNode(
 
       val connectionTargetNames = connections.values.map(_.split(":").head).toSet
 
-      connections.foreach { case (rhs, lhs) =>
-        val source = lhs.split(":").head
-        val target = rhs.split(":").head
+      connections.foreach {
+        case (rhs, lhs) =>
+          val source = lhs.split(":").head
+          val target = rhs.split(":").head
 
-        if(target.nonEmpty && connectionTargetNames.contains(target)) {
-          linkedHashMap(source) += target
-          linkedHashMap(target)
-        }
+          if (target.nonEmpty && connectionTargetNames.contains(target)) {
+            linkedHashMap(source) += target
+            linkedHashMap(target)
+          }
       }
       DiGraph(linkedHashMap)
     }
@@ -74,7 +74,7 @@ case class ModuleNode(
           diGraph.getEdges(node)
         }.filterNot(alreadyVisited.contains).distinct
 
-        if(nextNodes.nonEmpty) {
+        if (nextNodes.nonEmpty) {
           walkByRank(nextNodes, rankNumber + 1)
         }
       }
@@ -85,8 +85,8 @@ case class ModuleNode(
 
     val rankedNodes = getRankedNodes
 
-    val rankInfo = rankedNodes.map {
-      nodesAtRank => s"""{ rank=same; ${nodesAtRank.mkString(" ")} };"""
+    val rankInfo = rankedNodes.map { nodesAtRank =>
+      s"""{ rank=same; ${nodesAtRank.mkString(" ")} };"""
     }.mkString("", "\n  ", "")
 
     rankInfo + "\n  " + s"""{ rank=same; ${outputPorts.mkString(" ")} };"""
@@ -98,22 +98,22 @@ case class ModuleNode(
     */
   def render: String = {
     def expandBiConnects(target: String, sources: ArrayBuffer[String]): String = {
-      sources.map { vv => s"""$vv -> $target [dir = "both"]"""  }.mkString("\n")
+      sources.map { vv => s"""$vv -> $target [dir = "both"]""" }.mkString("\n")
     }
 
-    val rankInfo = if(renderWithRank) constructRankDirectives else ""
+    val rankInfo = if (renderWithRank) constructRankDirectives else ""
 
     val s = s"""
-       |subgraph $absoluteName {
-       |  label="$name"
-       |  URL="${url_string.getOrElse("")}"
-       |  bgcolor="$backgroundColor"
-       |  ${children.map(_.render).mkString("\n")}
-       |
-       |  ${connections.map { case (k, v) => s"$v -> $k"}.mkString("", "\n  ", "")}
-       |  ${analogConnections.map { case (k, v) => expandBiConnects(k, v) }.mkString("", "\n  ", "")}
-       |  $rankInfo
-       |}
+               |subgraph $absoluteName {
+               |  label="$name"
+               |  URL="${url_string.getOrElse("")}"
+               |  bgcolor="$backgroundColor"
+               |  ${children.map(_.render).mkString("\n")}
+               |
+               |  ${connections.map { case (k, v) => s"$v -> $k" }.mkString("", "\n  ", "")}
+               |  ${analogConnections.map { case (k, v) => expandBiConnects(k, v) }.mkString("", "\n  ", "")}
+               |  $rankInfo
+               |}
      """.stripMargin
     s
   }
@@ -121,7 +121,7 @@ case class ModuleNode(
   override def absoluteName: String = {
     parentOpt match {
       case Some(parent) => s"${parent.absoluteName}_$name"
-      case _ => s"cluster_$name"
+      case _            => s"cluster_$name"
     }
   }
 
@@ -145,8 +145,7 @@ case class ModuleNode(
     analogConnections(destination) += source
   }
 
-  //scalastyle:off method.name
-  def += (childNode: DotNode): Unit = {
+  def +=(childNode: DotNode): Unit = {
     namedNodes(childNode.absoluteName) = childNode
     children += childNode
   }

@@ -39,7 +39,6 @@ def javacOptionsVersion(scalaVersion: String): Seq[String] = {
   }
 }
 
-
 publishMavenStyle := true
 publishArtifact in Test := false
 pomIncludeRepository := { x => false }
@@ -74,10 +73,9 @@ publishTo := {
   val v = version.value
   val nexus = "https://oss.sonatype.org/"
   if (v.trim.endsWith("SNAPSHOT")) {
-    Some("snapshots" at nexus + "content/repositories/snapshots")
-  }
-  else {
-    Some("releases" at nexus + "service/local/staging/deploy/maven2")
+    Some("snapshots".at(nexus + "content/repositories/snapshots"))
+  } else {
+    Some("releases".at(nexus + "service/local/staging/deploy/maven2"))
   }
 }
 
@@ -86,8 +84,9 @@ val defaultVersions = Map(
   "chisel3" -> "3.4-SNAPSHOT"
 )
 
-libraryDependencies ++= Seq("chisel3").map {
-  dep: String => "edu.berkeley.cs" %% dep % sys.props.getOrElse(dep + "Version", defaultVersions(dep)) }
+libraryDependencies ++= Seq("chisel3").map { dep: String =>
+  "edu.berkeley.cs" %% dep % sys.props.getOrElse(dep + "Version", defaultVersions(dep))
+}
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.1.3" % "test",
@@ -99,7 +98,6 @@ scalacOptions ++= scalacOptionsVersion(scalaVersion.value)
 
 javacOptions ++= javacOptionsVersion(scalaVersion.value)
 
-
 // Assembly
 
 assemblyJarName in assembly := "diagrammer.jar"
@@ -107,4 +105,3 @@ assemblyJarName in assembly := "diagrammer.jar"
 test in assembly := {} // Should there be tests?
 
 assemblyOutputPath in assembly := file("./utils/bin/diagrammer.jar")
-

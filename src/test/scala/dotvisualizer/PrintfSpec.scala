@@ -2,8 +2,15 @@
 
 package dotvisualizer
 
+import java.io.{ByteArrayOutputStream, PrintStream}
+
 import chisel3._
+import chisel3.stage.{ChiselGeneratorAnnotation, ChiselStage}
+import dotvisualizer.stage._
 import firrtl.FileUtils
+import firrtl.annotations.Annotation
+import firrtl.options.TargetDirAnnotation
+import firrtl.stage.FirrtlSourceAnnotation
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 
@@ -16,29 +23,32 @@ class HasPrintf extends MultiIOModule {
 class PrintfSpec extends AnyFreeSpec with Matchers {
 
   "printfs can now be rendered" - {
-    val dirName = "test_run_dir/has_printf_on/"
 
     def makeDotFile(showPrintfs: Boolean): String = {
-      val circuit = chisel3.Driver.elaborate(() => new HasPrintf)
-      val firrtl = chisel3.Driver.emit(circuit)
-      val config = Config(
-        targetDir = dirName,
-        firrtlSource = firrtl,
-        rankDir = "TB",
-        useRanking = true,
-        showPrintfs = showPrintfs,
-        openProgram = ""
-      )
-      FirrtlDiagrammer.run(config)
+      val targetDir = s"test_run_dir/has_printf_$showPrintfs"
+      val annos = Seq(
+        TargetDirAnnotation(targetDir),
+        ChiselGeneratorAnnotation(() => new HasPrintf),
+        RankElementsAnnotation,
+        RankDirAnnotation("TB"),
+        OpenCommandAnnotation("")
+      ) ++ (if (showPrintfs) { Seq(ShowPrintfsAnnotation) }
+            else { Seq.empty[Annotation] })
+      val outputBuf = new ByteArrayOutputStream()
+      Console.withOut(new PrintStream(outputBuf)) {
+        (new DiagrammerStage).transform(annos)
+      }
+      val output = outputBuf.toString
+      output should include(s"creating dot file test_run_dir/has_printf_$showPrintfs/HasPrintf.dot")
 
-      FileUtils.getText(s"${dirName}HasPrintf.dot")
+      FileUtils.getText(s"$targetDir/HasPrintf.dot")
     }
 
     "showPrintfs=true will render printfs in dot file" in {
       val dotText = makeDotFile(showPrintfs = true)
 
-      dotText should include ("struct_cluster_HasPrintf_printf_")
-      dotText should include ("""printf("in %d, out %d\n")""")
+      dotText should include("struct_cluster_HasPrintf_printf_")
+      dotText should include("""printf("in %d, out %d\n")""")
     }
 
     "default behavior will not render printfs in dot file" in {
