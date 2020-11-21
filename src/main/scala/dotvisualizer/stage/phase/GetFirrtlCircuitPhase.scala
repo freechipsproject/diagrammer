@@ -19,8 +19,8 @@ class GetFirrtlCircuitPhase extends Phase {
     val rawFirrtl = firrtl.Parser.parse(firrtlText)
     val processedFirrtlCircuit = (new ToLoFirrtl)
       .transform(Seq(FirrtlCircuitAnnotation(rawFirrtl)))
-      .collectFirst {
-        case circuitAnnotation: FirrtlCircuitAnnotation => circuitAnnotation
+      .collectFirst { case circuitAnnotation: FirrtlCircuitAnnotation =>
+        circuitAnnotation
       }
       .getOrElse {
         throw new DiagrammerException("Error: Could not lower firrtl circuit")

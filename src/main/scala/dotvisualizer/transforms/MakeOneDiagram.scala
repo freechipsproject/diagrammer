@@ -14,8 +14,7 @@ import firrtl.{CircuitState, DependencyAPIMigration, Transform, WDefInstance, WR
 
 import scala.collection.mutable
 
-/**
-  * Annotations specify where to start rendering.  Currently the first encountered module that matches an annotation
+/** Annotations specify where to start rendering.  Currently the first encountered module that matches an annotation
   * will start the rendering, rendering continues per the depth specified in the annotation.
   * This pass is intermixed with other low to low transforms, it is not treated as a separate
   * emit, so if so annotated it will run with every firrtl compilation.
@@ -37,8 +36,8 @@ class MakeOneDiagram(renderSvg: RenderSvg) extends Transform with DependencyAPIM
     val c = state.circuit
     val targetDir = state.annotations.collectFirst { case TargetDirAnnotation(dir) => dir }.get
 
-    val startModuleName = state.annotations.collectFirst {
-      case StartModuleNameAnnotation(moduleName) => moduleName
+    val startModuleName = state.annotations.collectFirst { case StartModuleNameAnnotation(moduleName) =>
+      moduleName
     }.getOrElse(state.circuit.main)
 
     var linesPrintedSinceFlush = 0
@@ -64,8 +63,7 @@ class MakeOneDiagram(renderSvg: RenderSvg) extends Transform with DependencyAPIM
       }
     }
 
-    /**
-      * finds the specified module name in the circuit
+    /** finds the specified module name in the circuit
       *
       * @param moduleName name to find
       * @param circuit circuit being analyzed
@@ -82,8 +80,7 @@ class MakeOneDiagram(renderSvg: RenderSvg) extends Transform with DependencyAPIM
       }
     }
 
-    /**
-      * If rendering started, construct a graph inside moduleNode
+    /** If rendering started, construct a graph inside moduleNode
       * @param modulePrefix the path to this node
       * @param myModule     the firrtl module currently being parsed
       * @param moduleNode   a node renderable to dot notation constructed from myModule
@@ -97,8 +94,7 @@ class MakeOneDiagram(renderSvg: RenderSvg) extends Transform with DependencyAPIM
       subModuleDepth: Int = 0
     ): DotNode = {
 
-      /**
-        * Half the battle here is matching references between firrtl full name for an element and
+      /** Half the battle here is matching references between firrtl full name for an element and
         * dot's reference to a connect-able module
         * Following functions compute the two kinds of name
         */

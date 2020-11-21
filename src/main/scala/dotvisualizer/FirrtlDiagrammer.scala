@@ -6,8 +6,7 @@ import dotvisualizer.stage.DiagrammerStage
 import firrtl.FileUtils.isCommandAvailable
 import firrtl._
 
-/**
-  * This library implements a graphviz dot file render.
+/** This library implements a graphviz dot file render.
   */
 object FirrtlDiagrammer {
   def main(args: Array[String]): Unit = {
