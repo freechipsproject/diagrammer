@@ -91,7 +91,7 @@ libraryDependencies ++= Seq("chisel3").map { dep: String =>
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.1.3" % "test",
   "org.scalacheck" %% "scalacheck" % "1.14.3" % "test",
-  "com.github.scopt" %% "scopt" % "3.7.1"
+  "com.github.scopt" %% "scopt" % "4.0.0"
 )
 
 scalacOptions ++= scalacOptionsVersion(scalaVersion.value)
