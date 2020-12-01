@@ -3,8 +3,8 @@
 package dotvisualizer.dotnodes
 
 case class ValidIfNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
-  val select: String = s"$name:select"
-  val in1: String = s"$name:in1"
+  val select:         String = s"$name:select"
+  val in1:            String = s"$name:in1"
   override val asRhs: String = s"$name:out"
 
   def render: String = {
