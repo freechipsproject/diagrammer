@@ -2,9 +2,6 @@
 
 package dotvisualizer.dotnodes
 
-import firrtl.WRef
-import firrtl.ir.Print
-
 import scala.collection.mutable
 
 case class PrintfNode(name: String, formatString: String, parentOpt: Option[DotNode]) extends DotNode {
@@ -13,13 +10,12 @@ case class PrintfNode(name: String, formatString: String, parentOpt: Option[DotN
 
   override def absoluteName: String = "struct_" + super.absoluteName
 
-  text.append(
-    s"""
-      |$absoluteName [shape="plaintext" label=<
-      |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#EA3076">
-      |  <TR>
-      |    <TD>printf("$formatString") </TD>
-      |  </TR>
+  text.append(s"""
+                 |$absoluteName [shape="plaintext" label=<
+                 |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#EA3076">
+                 |  <TR>
+                 |    <TD>printf("$formatString") </TD>
+                 |  </TR>
     """.stripMargin)
 
   def addArgument(displayName: String, connectTarget: String, connect: String): PrintfArgument = {
@@ -29,9 +25,8 @@ case class PrintfNode(name: String, formatString: String, parentOpt: Option[DotN
   }
 
   def finish() {
-    text.append(
-      """
-        |</TABLE>>];
+    text.append("""
+                  |</TABLE>>];
     """.stripMargin)
   }
 
@@ -39,10 +34,10 @@ case class PrintfNode(name: String, formatString: String, parentOpt: Option[DotN
 }
 
 case class PrintfArgument(name: String, override val absoluteName: String, connectTarget: String) extends DotNode {
-  val parentOpt : Option[DotNode] = None // doesn't need to know parent
+  val parentOpt: Option[DotNode] = None // doesn't need to know parent
   def render: String = {
     s"""
-      |<TR><TD PORT="$connectTarget">$name</TD></TR>
+       |<TR><TD PORT="$connectTarget">$name</TD></TR>
     """.stripMargin
   }
 }
