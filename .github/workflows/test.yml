@@ -1,0 +1,24 @@
+name: Test
+
+on: [pull_request]
+
+jobs:
+  build:
+    name: ci
+    runs-on: ubuntu-latest
+    container:
+      image: ucbbar/chisel3-tools
+      options: --user github --entrypoint /bin/bash
+    env:
+      CONTAINER_HOME: /home/github
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Setup Scala
+        uses: olafurpg/setup-scala@v10
+      - name: Cache
+        uses: coursier/cache-action@v5
+      - name: Test
+        id: test
+        run: sbt +test
