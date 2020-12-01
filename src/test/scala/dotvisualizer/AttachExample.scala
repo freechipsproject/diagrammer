@@ -2,11 +2,16 @@
 
 package dotvisualizer
 
-import firrtl.FileUtils
+import java.io.{ByteArrayOutputStream, PrintStream}
 
-import scala.io.Source
+import dotvisualizer.stage.{DiagrammerStage, OpenCommandAnnotation}
+import firrtl.FileUtils
+import firrtl.options.TargetDirAnnotation
+import firrtl.stage.FirrtlSourceAnnotation
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
+
+import scala.io.Source
 
 /**
   * Checks that attaches are double headed arrows connected to each node
@@ -18,22 +23,31 @@ class AttachExample extends AnyFreeSpec with Matchers {
     FileUtils.makeDirectory(dir)
 
     val firrtl = s"""
-         |circuit AttachTest :
-         |  module AttachTest :
-         |    input clock : Clock
-         |    input reset : UInt<1>
-         |
-         |    output io : {in : Analog<1>, out : Analog<1>}
-         |    output io2 : {in : Analog<1>, out1 : Analog<1>, out2 : Analog<1>, out3 : Analog<1>}
-         |
-         |    attach (io.in, io.out) @[cmd8.sc 6:9]
-         |
-         |    attach (io2.in, io2.out1, io2.out2, io2.out3) @[cmd8.sc 6:9]
-         |
+                    |circuit AttachTest :
+                    |  module AttachTest :
+                    |    input clock : Clock
+                    |    input reset : UInt<1>
+                    |
+                    |    output io : {in : Analog<1>, out : Analog<1>}
+                    |    output io2 : {in : Analog<1>, out1 : Analog<1>, out2 : Analog<1>, out3 : Analog<1>}
+                    |
+                    |    attach (io.in, io.out) @[cmd8.sc 6:9]
+                    |
+                    |    attach (io2.in, io2.out1, io2.out2, io2.out3) @[cmd8.sc 6:9]
+                    |
        """.stripMargin
 
-    val config = Config(targetDir = s"$dir/", firrtlSource = firrtl)
-    FirrtlDiagrammer.run(config)
+    val outputBuf = new ByteArrayOutputStream()
+    Console.withOut(new PrintStream(outputBuf)) {
+      val annos = Seq(TargetDirAnnotation(dir), FirrtlSourceAnnotation(firrtl), OpenCommandAnnotation(""))
+      (new DiagrammerStage).execute(Array.empty, annos)
+    }
+    val output = outputBuf.toString
+
+    // confirm user gets message
+    output should include("creating dot file test_run_dir/attach/AttachTest.dot")
+    // confirm we have turned off opening file in browser
+    output should include("There is no program identified which will render the svg files")
 
     val lines = Source.fromFile(s"$dir/AttachTest.dot").getLines()
 
@@ -45,7 +59,7 @@ class AttachExample extends AnyFreeSpec with Matchers {
     )
 
     targets.foreach { target =>
-      lines.exists { line => line.contains(target) } should be (true)
+      lines.exists { line => line.contains(target) } should be(true)
     }
   }
 }
