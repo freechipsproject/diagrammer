@@ -5,15 +5,15 @@ package dotvisualizer.dotnodes
 import java.io.{File, PrintWriter}
 
 case class MuxNode(
-  name: String,
-  parentOpt: Option[DotNode],
+  name:         String,
+  parentOpt:    Option[DotNode],
   arg0ValueOpt: Option[String] = None,
-  arg1ValueOpt: Option[String] = None
-) extends DotNode {
+  arg1ValueOpt: Option[String] = None)
+    extends DotNode {
 
-  val select: String = s"$name:select"
-  val in1: String = s"$name:in1"
-  val in2: String = s"$name:in2"
+  val select:         String = s"$name:select"
+  val in1:            String = s"$name:in1"
+  val in2:            String = s"$name:in2"
   override val asRhs: String = s"$name:out"
 
   def render: String = {
@@ -62,7 +62,6 @@ object MuxNode {
     writer.println(s"\n${mux1.out} -> ${mux2.in1}")
     writer.println(s"\n${mux2.out} -> ${reg1.in}")
     writer.println(s"\n${reg1.out} -> ${mux2.in2}")
-
 
     writer.println(s"}")
 

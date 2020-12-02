@@ -6,9 +6,11 @@ import java.io.PrintWriter
 
 import dotvisualizer._
 import dotvisualizer.dotnodes._
+import dotvisualizer.stage.{RankDirAnnotation, RankElementsAnnotation, ShowPrintfsAnnotation, StartModuleNameAnnotation}
 import firrtl.PrimOps._
 import firrtl.ir._
-import firrtl.{CircuitForm, CircuitState, LowForm, Transform, WDefInstance, WRef, WSubField, WSubIndex}
+import firrtl.options.TargetDirAnnotation
+import firrtl.{CircuitState, DependencyAPIMigration, Transform, WDefInstance, WRef, WSubField, WSubIndex}
 
 import scala.collection.mutable
 
@@ -18,33 +20,37 @@ import scala.collection.mutable
   * This pass is intermixed with other low to low transforms, it is not treated as a separate
   * emit, so if so annotated it will run with every firrtl compilation.
   */
-//noinspection ScalaStyle
-class MakeOneDiagram extends Transform {
-  override def inputForm: CircuitForm = LowForm
-  override def outputForm: CircuitForm = LowForm
+class MakeOneDiagram(renderSvg: RenderSvg) extends Transform with DependencyAPIMigration {
+  override def prerequisites = Seq.empty
+
+  override def optionalPrerequisites = Seq.empty
+
+  override def optionalPrerequisiteOf = Seq.empty
+
+  override def invalidates(a: Transform) = false
 
   val subModulesFound: mutable.HashSet[DefModule] = new mutable.HashSet[DefModule]()
 
-  def execute(state: CircuitState) : CircuitState = {
+  def execute(state: CircuitState): CircuitState = {
     val nameToNode: mutable.HashMap[String, DotNode] = new mutable.HashMap()
 
     val c = state.circuit
-    val targetDir = FirrtlDiagrammer.getTargetDir(state.annotations)
+    val targetDir = state.annotations.collectFirst { case TargetDirAnnotation(dir) => dir }.get
 
     val startModuleName = state.annotations.collectFirst {
-      case StartModule(moduleName) => moduleName
+      case StartModuleNameAnnotation(moduleName) => moduleName
     }.getOrElse(state.circuit.main)
 
     var linesPrintedSinceFlush = 0
     var totalLinesPrinted = 0
 
-    val useRanking = state.annotations.collectFirst { case UseRankAnnotation => UseRankAnnotation}.isDefined
+    val useRanking = state.annotations.exists { case RankElementsAnnotation => true; case _ => false }
 
-    val rankDir = state.annotations.collectFirst { case RankDirAnnotation(dir) => dir}.getOrElse("LR")
+    val rankDir = state.annotations.collectFirst { case RankDirAnnotation(dir) => dir }.getOrElse("LR")
 
-    val showPrintfs = state.annotations.collectFirst { case ShowPrintfsAnnotation => ShowPrintfsAnnotation}.isDefined
+    val showPrintfs = state.annotations.exists { case ShowPrintfsAnnotation => true; case _ => false }
 
-    val printFileName = s"$targetDir$startModuleName.dot"
+    val printFileName = s"$targetDir/$startModuleName.dot"
     println(s"creating dot file $printFileName")
     val printFile = new PrintWriter(new java.io.File(printFileName))
     def pl(s: String): Unit = {
@@ -52,7 +58,7 @@ class MakeOneDiagram extends Transform {
       val lines = s.count(_ == '\n')
       totalLinesPrinted += lines
       linesPrintedSinceFlush += lines
-      if(linesPrintedSinceFlush > 1000) {
+      if (linesPrintedSinceFlush > 1000) {
         printFile.flush()
         linesPrintedSinceFlush = 0
       }
@@ -84,12 +90,13 @@ class MakeOneDiagram extends Transform {
       * @return
       */
     def processModule(
-      modulePrefix: String,
-      myModule: DefModule,
-      moduleNode: ModuleNode,
-      scope: Scope = Scope(),
+      modulePrefix:   String,
+      myModule:       DefModule,
+      moduleNode:     ModuleNode,
+      scope:          Scope = Scope(),
       subModuleDepth: Int = 0
     ): DotNode = {
+
       /**
         * Half the battle here is matching references between firrtl full name for an element and
         * dot's reference to a connect-able module
@@ -101,7 +108,7 @@ class MakeOneDiagram extends Transform {
         * @return
         */
       def getFirrtlName(name: String): String = {
-        if(modulePrefix.isEmpty) name else modulePrefix + "." + name
+        if (modulePrefix.isEmpty) name else modulePrefix + "." + name
       }
 
       def expand(name: String): String = {
@@ -109,7 +116,8 @@ class MakeOneDiagram extends Transform {
       }
 
       def reducedLongLiteral(s: String): String = {
-        if(s.length > 32) { s.take(16) + "..." + s.takeRight(16) } else { s }
+        if (s.length > 32) { s.take(16) + "..." + s.takeRight(16) }
+        else { s }
       }
 
       def getLiteralValue(expression: Expression): Option[String] = {
@@ -127,8 +135,8 @@ class MakeOneDiagram extends Transform {
 
           val opNode = BinaryOpNode(symbol, Some(moduleNode), arg0ValueOpt, arg1ValueOpt)
           moduleNode += opNode
-          if(arg0ValueOpt.isEmpty) moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
-          if(arg1ValueOpt.isEmpty) moduleNode.connect(opNode.in2, processExpression(primOp.args.tail.head))
+          if (arg0ValueOpt.isEmpty) moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
+          if (arg1ValueOpt.isEmpty) moduleNode.connect(opNode.in2, processExpression(primOp.args.tail.head))
           opNode.asRhs
         }
 
@@ -191,7 +199,6 @@ class MakeOneDiagram extends Transform {
             moduleNode.connect(opNode.in1, processExpression(primOp.args.head))
             opNode.asRhs
 
-
           case Head => addOneArgOneParamOpNode("head")
           case Tail => addOneArgOneParamOpNode("tail")
 
@@ -209,7 +216,6 @@ class MakeOneDiagram extends Transform {
           }
         }
 
-
         val result = expression match {
           case mux: firrtl.ir.Mux =>
             val arg0ValueOpt = getLiteralValue(mux.tval)
@@ -218,8 +224,8 @@ class MakeOneDiagram extends Transform {
             val muxNode = MuxNode(s"mux_${mux.hashCode().abs}", Some(moduleNode), arg0ValueOpt, arg1ValueOpt)
             moduleNode += muxNode
             moduleNode.connect(muxNode.select, processExpression(mux.cond))
-            if(arg0ValueOpt.isEmpty) moduleNode.connect(muxNode.in1, processExpression(mux.tval))
-            if(arg1ValueOpt.isEmpty) moduleNode.connect(muxNode.in2, processExpression(mux.fval))
+            if (arg0ValueOpt.isEmpty) moduleNode.connect(muxNode.in1, processExpression(mux.tval))
+            if (arg1ValueOpt.isEmpty) moduleNode.connect(muxNode.in2, processExpression(mux.fval))
             muxNode.asRhs
           case WRef(name, _, _, _) =>
             resolveRef(getFirrtlName(name), expand(name))
@@ -229,7 +235,7 @@ class MakeOneDiagram extends Transform {
             resolveRef(getFirrtlName(subfield.serialize), expand(subfield.serialize))
           case subIndex: WSubIndex =>
             resolveRef(getFirrtlName(subIndex.serialize), expand(subIndex.serialize))
-          case validIf : ValidIf =>
+          case validIf: ValidIf =>
             val validIfNode = ValidIfNode(s"validif_${validIf.hashCode().abs}", Some(moduleNode))
             moduleNode += validIfNode
             moduleNode.connect(validIfNode.select, processExpression(validIf.cond))
@@ -258,8 +264,9 @@ class MakeOneDiagram extends Transform {
           module.ports.foreach {
             case port if port.direction == dir =>
               val portNode = PortNode(
-                port.name, Some(moduleNode),
-                rank = if(port.direction == firrtl.ir.Input) 0 else 1000,
+                port.name,
+                Some(moduleNode),
+                rank = if (port.direction == firrtl.ir.Input) 0 else 1000,
                 port.direction == firrtl.ir.Input
               )
               nameToNode(getFirrtlName(port.name)) = portNode
@@ -269,7 +276,7 @@ class MakeOneDiagram extends Transform {
 
         }
 
-        if(scope.doPorts()) {
+        if (scope.doPorts()) {
           showPorts(firrtl.ir.Input)
           showPorts(firrtl.ir.Output)
         }
@@ -286,7 +293,6 @@ class MakeOneDiagram extends Transform {
         val printfNode = PrintfNode(nodeName, printf.string.serialize, Some(moduleNode))
 
         printf.args.foreach { arg =>
-
           val displayName = arg.serialize
             .replaceAll("[<]", "&lt;")
             .replaceAll("[>]", "&gt;")
@@ -303,17 +309,14 @@ class MakeOneDiagram extends Transform {
         }
         printfNode.finish()
 
-
         moduleNode += printfNode
       }
 
       def getConnectInfo(expression: Expression): String = {
         val (fName, dotName) = expression match {
-          case WRef(name, _, _, _) => (getFirrtlName(name), expand(name))
+          case WRef(name, _, _, _)      => (getFirrtlName(name), expand(name))
           case Reference(name, _, _, _) => (getFirrtlName(name), expand(name))
           case subfield: WSubField =>
-            (getFirrtlName(subfield.serialize), expand(subfield.serialize))
-          case subfield: SubField =>
             (getFirrtlName(subfield.serialize), expand(subfield.serialize))
           case s: WSubIndex => (getFirrtlName(s.serialize), expand(s.serialize))
           case other =>
@@ -327,7 +330,6 @@ class MakeOneDiagram extends Transform {
         }
         lhsName
       }
-
 
       def processStatement(s: Statement): Unit = {
         s match {
@@ -350,15 +352,15 @@ class MakeOneDiagram extends Transform {
             }
 
           case WDefInstance(_, instanceName, moduleName, _) =>
-
             val subModule = findModule(moduleName, c)
-            val newPrefix = if(modulePrefix.isEmpty) instanceName else modulePrefix + "." + instanceName
+            val newPrefix = if (modulePrefix.isEmpty) instanceName else modulePrefix + "." + instanceName
             //val url_string = "file:///Users/monica/ChiselProjects/visualizer/src/test/scala/dotvisualizer/" +
             //  info.toString.drop(3).split(" ").head //name of source code file
             //val line_num = info.toString().drop(3).split(" ").tail(0).split(":").head //line # in source code file
             //val subModuleNode = ModuleNode(instanceName, Some(moduleNode), Some(url_string + "#line" + line_num))
             val moduleNameParsed = moduleName.split("/").last
-            val subModuleNode = ModuleNode(instanceName, Some(moduleNode), Some(moduleNameParsed + ".dot.svg"), subModuleDepth + 1)
+            val subModuleNode =
+              ModuleNode(instanceName, Some(moduleNode), Some(moduleNameParsed + ".dot.svg"), subModuleDepth + 1)
             moduleNode += subModuleNode
 
             subModulesFound += subModule
@@ -410,7 +412,7 @@ class MakeOneDiagram extends Transform {
         pl(s"""rankdir="$rankDir" """)
         //TODO: make this an option -- pl(s"graph [splines=ortho];")
         val topModuleNode = ModuleNode(startModuleName, parentOpt = None)
-        if(useRanking) topModuleNode.renderWithRank = true
+        if (useRanking) topModuleNode.renderWithRank = true
         processModule("", topModule, topModuleNode, Scope(0, 1))
 
         pl(topModuleNode.render)
@@ -431,8 +433,6 @@ object MakeOneDiagram {
   val subModuleColorsByDepth = Array(
     "#FFF8DC", // Cornsilk
     "#ADD8E6", // Light Blue
-    "#FFB6C1"  // Light Pink
+    "#FFB6C1" // Light Pink
   )
 }
-
-
