@@ -15,7 +15,7 @@ trait CrossUnRootedSbtModule extends CrossSbtModule {
 }
 
 trait CommonModule extends CrossUnRootedSbtModule with PublishModule {
-  def publishVersion = "1.3.2"
+  def publishVersion = "1.3.1"
 
   def pomSettings = PomSettings(
     description = artifactName(),
@@ -77,7 +77,7 @@ object diagrammer extends Cross[DiagrammerModule](crossVersions: _*) {
 }
 
 // Provide a managed dependency on X if -DXVersion="" is supplied on the command line.
-val defaultVersions = Map("chisel3" -> "3.4.2")
+val defaultVersions = Map("chisel3" -> "3.4.1")
 
 def getVersion(dep: String, org: String = "edu.berkeley.cs") = {
   val version = sys.env.getOrElse(dep + "Version", defaultVersions(dep))
