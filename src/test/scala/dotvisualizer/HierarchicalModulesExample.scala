@@ -116,7 +116,7 @@ class HierarchicalModulesExample extends AnyFreeSpec with Matchers {
   """This is an example of a module with hierarchical submodules """  in {
     val circuit = chisel3.Driver.elaborate(() => new TopOfVisualizer)
     val firrtl = chisel3.Driver.emit(circuit)
-    val config = Config(targetDir = "test_run_dir/visualizer/", firrtlSource = firrtl)
+    val config = Config(targetDir = "test_run_dir/visualizer/", firrtlSource = firrtl, openProgram = "")
     FirrtlDiagrammer.run(config)
   }
 }
