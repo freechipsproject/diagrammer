@@ -40,7 +40,8 @@ class FirExampleSpec extends AnyFreeSpec with Matchers {
     val circuit = chisel3.Driver.elaborate(() => new MyManyDynamicElementVecFir(10))
     val firrtl = chisel3.Driver.emit(circuit)
     val config = Config(
-      targetDir = "test_run_dir/fir_example/", firrtlSource = firrtl, rankDir = "TB", useRanking = true
+      targetDir = "test_run_dir/fir_example/", firrtlSource = firrtl,
+      rankDir = "TB", useRanking = true, openProgram = ""
     )
     FirrtlDiagrammer.run(config)
   }

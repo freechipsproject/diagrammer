@@ -46,7 +46,7 @@ class AttachExample extends AnyFreeSpec with Matchers {
          |
        """.stripMargin
 
-    val config = Config(targetDir = s"$dir/", firrtlSource = firrtl)
+    val config = Config(targetDir = s"$dir/", firrtlSource = firrtl, openProgram = "")
     FirrtlDiagrammer.run(config)
 
     val lines = Source.fromFile(s"$dir/AttachTest.dot").getLines()
