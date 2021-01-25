@@ -13,8 +13,7 @@ import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 import scala.language.reflectiveCalls
 
-/**
-  * This class has parameterizable widths, it will generate different hardware
+/** This class has parameterizable widths, it will generate different hardware
   *
   * @param widthC io width
   */
@@ -27,8 +26,7 @@ class VizModC(widthC: Int) extends Module {
   io.out := io.in
 }
 
-/**
-  * instantiates a C of a particular size, VizModA does not generate different hardware
+/** instantiates a C of a particular size, VizModA does not generate different hardware
   * based on it's parameter
   * @param annoParam  parameter is only used in annotation not in circuit
   */

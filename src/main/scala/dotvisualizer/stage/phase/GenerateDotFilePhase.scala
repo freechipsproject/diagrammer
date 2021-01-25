@@ -27,8 +27,7 @@ class GenerateDotFilePhase extends Phase {
 
   override def invalidates(a: Phase) = false
 
-  /**
-    * Make a simple css file that controls highlighting
+  /** Make a simple css file that controls highlighting
     *
     * @param targetDir where to put the css
     */
@@ -48,8 +47,7 @@ class GenerateDotFilePhase extends Phase {
     printWriter.close()
   }
 
-  /**
-    * Open an svg file using the open program
+  /** Open an svg file using the open program
     *
     * @param fileName    file to be opened
     * @param openProgram program to use
@@ -72,12 +70,12 @@ class GenerateDotFilePhase extends Phase {
 
     addCss(targetDir)
 
-    val dotProgram = annotationSeq.collectFirst {
-      case SetRenderProgramAnnotation(program) => program
+    val dotProgram = annotationSeq.collectFirst { case SetRenderProgramAnnotation(program) =>
+      program
     }.getOrElse("dot")
 
-    val dotTimeOut = annotationSeq.collectFirst {
-      case DotTimeoutSecondsAnnotation(secs) => secs
+    val dotTimeOut = annotationSeq.collectFirst { case DotTimeoutSecondsAnnotation(secs) =>
+      secs
     }.getOrElse(7)
 
     val renderer = new RenderSvg(dotProgram, dotTimeOut)
@@ -91,8 +89,8 @@ class GenerateDotFilePhase extends Phase {
     }
 
     val fileName = s"$targetDir/${circuitState.circuit.main}_hierarchy.dot"
-    val openProgram = annotationSeq.collectFirst {
-      case OpenCommandAnnotation(program) => program
+    val openProgram = annotationSeq.collectFirst { case OpenCommandAnnotation(program) =>
+      program
     }.getOrElse("open")
 
     show(fileName, openProgram)

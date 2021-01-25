@@ -13,8 +13,7 @@ import firrtl.options.TargetDirAnnotation
 
 import scala.collection.mutable
 
-/**
-  * Represents a module instance in the graph of instances in a circuit.
+/** Represents a module instance in the graph of instances in a circuit.
   *
   * @param graphName    How `dot` will refer to this node
   * @param instanceName The instance name within the parent module
@@ -23,8 +22,7 @@ import scala.collection.mutable
 class ModuleDotNode private (val graphName: String, val instanceName: String, val moduleName: String) {
   val children = new mutable.ArrayBuffer[ModuleDotNode]()
 
-  /**
-    * Render this node as a small HTML table with the module name at the top
+  /** Render this node as a small HTML table with the module name at the top
     * and each child instance as a row
     * children are sorted by moduleName then instanceName
     * @return
@@ -59,14 +57,12 @@ class ModuleDotNode private (val graphName: String, val instanceName: String, va
   }
 }
 
-/**
-  * Is the factory for ModuleDotNode creation
+/** Is the factory for ModuleDotNode creation
   */
 object ModuleDotNode {
   var nodeCounter: Int = 0
 
-  /**
-    * This factor created a new unique dot graph node name for this instance
+  /** This factor created a new unique dot graph node name for this instance
     * @param instanceName The instance
     * @param moduleName   The module
     * @return
@@ -77,8 +73,7 @@ object ModuleDotNode {
   }
 }
 
-/**
-  * Creates a high level diagram that shows the instances in the circuit and their Module names
+/** Creates a high level diagram that shows the instances in the circuit and their Module names
   */
 //
 //TODO: Make even more links from these graph nodes back to the other generated graphs
@@ -95,8 +90,8 @@ class ModuleLevelDiagrammer(renderSvg: RenderSvg) extends Transform with Depende
   def execute(circuitState: CircuitState): CircuitState = {
     val c = circuitState.circuit
     val targetDir = circuitState.annotations.collectFirst { case TargetDirAnnotation(dir) => dir }.get
-    val startModule = circuitState.annotations.collectFirst {
-      case StartModuleNameAnnotation(moduleName) => moduleName
+    val startModule = circuitState.annotations.collectFirst { case StartModuleNameAnnotation(moduleName) =>
+      moduleName
     }.getOrElse(circuitState.circuit.main)
 
     val TopLevel = startModule + "_hierarchy"
@@ -115,8 +110,7 @@ class ModuleLevelDiagrammer(renderSvg: RenderSvg) extends Transform with Depende
 
     val top = WDefInstance(startModule, startModule)
 
-    /**
-      * Find the given instance in the Module Hierarchy
+    /** Find the given instance in the Module Hierarchy
       * This is almost certainly inefficient. Should not have to map the modules every time
       * @param instance instance being searched for
       * @return
@@ -137,8 +131,7 @@ class ModuleLevelDiagrammer(renderSvg: RenderSvg) extends Transform with Depende
       }
     }
 
-    /**
-      * Walk through the instance graph adding ModuleDotNodes and a record of their connections
+    /** Walk through the instance graph adding ModuleDotNodes and a record of their connections
       * @param wDefInstance start instance
       * @param path         underscore separated path to the start instance
       * @return

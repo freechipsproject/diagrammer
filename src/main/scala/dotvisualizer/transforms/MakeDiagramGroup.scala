@@ -18,8 +18,7 @@ class MakeDiagramGroup(renderSvg: RenderSvg) extends Transform with DependencyAP
 
   override def invalidates(a: Transform) = false
 
-  /**
-    * Creates a series of diagrams starting with the startModule and continuing
+  /** Creates a series of diagrams starting with the startModule and continuing
     * through all descendant sub-modules.
     * @param state the state to be diagrammed
     * @return
@@ -31,8 +30,8 @@ class MakeDiagramGroup(renderSvg: RenderSvg) extends Transform with DependencyAP
       s"test_run_dir/${state.circuit.main}/"
     }
 
-    val startModule = state.annotations.collectFirst {
-      case StartModuleNameAnnotation(moduleName) => moduleName
+    val startModule = state.annotations.collectFirst { case StartModuleNameAnnotation(moduleName) =>
+      moduleName
     }.getOrElse(state.circuit.main)
 
     val queue = new mutable.Queue[String]()

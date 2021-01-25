@@ -30,8 +30,7 @@ class RemoveTempWires extends Transform with DependencyAPIMigration {
 
   override def invalidates(a: Transform) = false
 
-  /**
-    * Foreach Module in a firrtl circuit
+  /** Foreach Module in a firrtl circuit
     *   Find all the DefNodes with temp names and render their expression
     *   Remove all the found dev nodes
     *   recursively replace their references with their associated expression
@@ -43,8 +42,7 @@ class RemoveTempWires extends Transform with DependencyAPIMigration {
 
     val c = state.circuit
 
-    /**
-      * removes all references to temp wires in module
+    /** removes all references to temp wires in module
       * @param module the module to be altered
       * @return
       */
@@ -52,8 +50,7 @@ class RemoveTempWires extends Transform with DependencyAPIMigration {
 
       val toRemove = new mutable.HashMap[String, Expression]()
 
-      /**
-        * Saves reference to the expression associated
+      /** Saves reference to the expression associated
         * with a temp wire associated with a Node statement
         * @param s statement to be checked
         */
@@ -75,8 +72,7 @@ class RemoveTempWires extends Transform with DependencyAPIMigration {
         case _ => //do nothing
       }
 
-      /**
-        * recursively find any references to temp wires in the expression and replace the
+      /** recursively find any references to temp wires in the expression and replace the
         * references with the associated expression
         * @param e expression to be altered
         * @return
@@ -86,7 +82,7 @@ class RemoveTempWires extends Transform with DependencyAPIMigration {
           case wire: WRef =>
             if (
               (wire.name.startsWith(RemoveTempWires.GenPrefix) ||
-              wire.name.startsWith(RemoveTempWires.TempPrefix)) && toRemove.contains(wire.name)
+                wire.name.startsWith(RemoveTempWires.TempPrefix)) && toRemove.contains(wire.name)
             ) {
               val new_node = toRemove(wire.name)
               removeGen(new_node)
@@ -96,7 +92,7 @@ class RemoveTempWires extends Transform with DependencyAPIMigration {
           case wire: WSubField =>
             if (
               (wire.name.startsWith(RemoveTempWires.GenPrefix) ||
-              wire.name.startsWith(RemoveTempWires.TempPrefix)) && toRemove.contains(wire.name)
+                wire.name.startsWith(RemoveTempWires.TempPrefix)) && toRemove.contains(wire.name)
             ) {
               val new_node = toRemove(wire.name)
               removeGen(new_node)
@@ -109,8 +105,7 @@ class RemoveTempWires extends Transform with DependencyAPIMigration {
         }
       }
 
-      /**
-        * Removes node definition statements for temp wires
+      /** Removes node definition statements for temp wires
         * @param s statement to be altered
         * @return
         */
