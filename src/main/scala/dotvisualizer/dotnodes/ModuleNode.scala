@@ -141,10 +141,7 @@ case class ModuleNode(
   }
 
   def analogConnect(destination: String, source: String, edgeLabel: String = ""): Unit = {
-    if (!analogConnections.contains(destination)) {
-      analogConnections(destination) = new mutable.ArrayBuffer[String]()
-    }
-    analogConnections(destination) += source
+    analogConnections.getOrElseUpdate(destination, new mutable.ArrayBuffer[String]) += source
   }
 
   def +=(childNode: DotNode): Unit = {
