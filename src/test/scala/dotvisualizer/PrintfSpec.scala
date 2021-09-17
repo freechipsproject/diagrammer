@@ -2,19 +2,18 @@
 
 package dotvisualizer
 
-import java.io.{ByteArrayOutputStream, PrintStream}
-
 import chisel3._
-import chisel3.stage.{ChiselGeneratorAnnotation, ChiselStage}
+import chisel3.stage.ChiselGeneratorAnnotation
 import dotvisualizer.stage._
 import firrtl.FileUtils
 import firrtl.annotations.Annotation
 import firrtl.options.TargetDirAnnotation
-import firrtl.stage.FirrtlSourceAnnotation
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
 
-class HasPrintf extends MultiIOModule {
+import java.io.{ByteArrayOutputStream, PrintStream}
+
+class HasPrintf extends Module {
   val in = IO(Input(Bool()))
   val out = IO(Output(Bool()))
   out := in

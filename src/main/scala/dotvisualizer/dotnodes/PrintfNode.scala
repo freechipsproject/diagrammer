@@ -24,7 +24,7 @@ case class PrintfNode(name: String, formatString: String, parentOpt: Option[DotN
     port
   }
 
-  def finish() {
+  def finish(): Unit = {
     text.append("""
                   |</TABLE>>];
     """.stripMargin)

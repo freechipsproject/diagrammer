@@ -43,7 +43,7 @@ trait CommonModule extends CrossUnRootedSbtModule with PublishModule {
   override def javacOptions = CommonBuild.javacOptionsVersion(crossScalaVersion)
 }
 
-val crossVersions = Seq("2.12.10", "2.11.12")
+val crossVersions = Seq("2.12.14", "2.13.6")
 
 // Make this available to external tools.
 object diagrammer extends Cross[DiagrammerModule](crossVersions: _*) {
