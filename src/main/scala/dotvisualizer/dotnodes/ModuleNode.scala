@@ -5,6 +5,7 @@ package dotvisualizer.dotnodes
 import dotvisualizer.transforms.MakeOneDiagram
 import firrtl.graph.DiGraph
 
+import scala.annotation.tailrec
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 
@@ -21,12 +22,9 @@ case class ModuleNode(
   val subModuleNames: mutable.HashSet[String] = new mutable.HashSet[String]()
 
   val connections: mutable.HashMap[String, String] = new mutable.HashMap()
-  private val analogConnections = new mutable.HashMap[String, ArrayBuffer[String]]() {
-    override def default(key: String): ArrayBuffer[String] = {
-      this(key) = new ArrayBuffer[String]()
-      this(key)
-    }
-  }
+
+  private val analogConnections = new mutable.HashMap[String, ArrayBuffer[String]]()
+
   val localConnections: mutable.HashMap[String, String] = new mutable.HashMap()
 
   val backgroundColorIndex: Int = subModuleDepth % MakeOneDiagram.subModuleColorsByDepth.length
@@ -65,6 +63,7 @@ case class ModuleNode(
       val alreadyVisited = new mutable.HashSet[String]()
       val rankNodes = new mutable.ArrayBuffer[Seq[String]]()
 
+      @tailrec
       def walkByRank(nodes: Seq[String], rankNumber: Int = 0): Unit = {
         rankNodes.append(nodes)
 
@@ -142,7 +141,7 @@ case class ModuleNode(
   }
 
   def analogConnect(destination: String, source: String, edgeLabel: String = ""): Unit = {
-    analogConnections(destination) += source
+    analogConnections.getOrElseUpdate(destination, new mutable.ArrayBuffer[String]) += source
   }
 
   def +=(childNode: DotNode): Unit = {
