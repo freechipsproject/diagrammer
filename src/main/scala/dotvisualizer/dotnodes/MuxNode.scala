@@ -1,33 +1,19 @@
-/*
-Copyright 2020 The Regents of the University of California (Regents)
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
 
 package dotvisualizer.dotnodes
 
 import java.io.{File, PrintWriter}
 
 case class MuxNode(
-  name: String,
-  parentOpt: Option[DotNode],
+  name:         String,
+  parentOpt:    Option[DotNode],
   arg0ValueOpt: Option[String] = None,
-  arg1ValueOpt: Option[String] = None
-) extends DotNode {
+  arg1ValueOpt: Option[String] = None)
+    extends DotNode {
 
-  val select: String = s"$name:select"
-  val in1: String = s"$name:in1"
-  val in2: String = s"$name:in2"
+  val select:         String = s"$name:select"
+  val in1:            String = s"$name:in1"
+  val in2:            String = s"$name:in2"
   override val asRhs: String = s"$name:out"
 
   def render: String = {
@@ -76,7 +62,6 @@ object MuxNode {
     writer.println(s"\n${mux1.out} -> ${mux2.in1}")
     writer.println(s"\n${mux2.out} -> ${reg1.in}")
     writer.println(s"\n${reg1.out} -> ${mux2.in2}")
-
 
     writer.println(s"}")
 

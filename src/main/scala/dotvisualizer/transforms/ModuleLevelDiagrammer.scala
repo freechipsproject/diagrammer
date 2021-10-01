@@ -1,28 +1,15 @@
-/*
-Copyright 2020 The Regents of the University of California (Regents)
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
 
 package dotvisualizer.transforms
 
 import java.io.PrintWriter
 
-import dotvisualizer.{FirrtlDiagrammer, StartModule}
+import dotvisualizer.RenderSvg
+import dotvisualizer.stage.StartModuleNameAnnotation
 import firrtl.Mappers._
 import firrtl._
-import firrtl.analyses.InstanceGraph
-import firrtl.ir.{Block, DefInstance, Statement}
+import firrtl.ir.{Block, Statement}
+import firrtl.options.TargetDirAnnotation
 
 import scala.collection.mutable
 
@@ -46,31 +33,27 @@ class ModuleDotNode private (val graphName: String, val instanceName: String, va
     val s = new mutable.StringBuilder()
     s.append(s"""$graphName [shape= "plaintext" href="$moduleName.dot.svg" """)
     s.append(s"""label=<\n""")
-    s.append(
-      """
-        |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" >
+    s.append("""
+               |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" >
       """.stripMargin)
 
-    s.append(
-      s"""
-         |  <TR >
-         |    <TD BGCOLOR="#FFDEAD" > $moduleName </TD>
-         |  </TR>
+    s.append(s"""
+                |  <TR >
+                |    <TD BGCOLOR="#FFDEAD" > $moduleName </TD>
+                |  </TR>
         """.stripMargin)
 
     children.sortBy { child => s"${child.moduleName} ${child.instanceName}" }.foreach { child =>
-      s.append(
-        s"""
-           |  <TR>
-           |    <TD PORT="${child.graphName}" BGCOLOR="#FFF8DC" >${child.instanceName}</TD>
-           |  </TR>
+      s.append(s"""
+                  |  <TR>
+                  |    <TD PORT="${child.graphName}" BGCOLOR="#FFF8DC" >${child.instanceName}</TD>
+                  |  </TR>
         """.stripMargin)
     }
 
-    s.append(
-      s"""
-         |</TABLE>>];
-         |
+    s.append(s"""
+                |</TABLE>>];
+                |
       """.stripMargin)
     s.toString
   }
@@ -100,19 +83,20 @@ object ModuleDotNode {
 //
 //TODO: Make even more links from these graph nodes back to the other generated graphs
 //
-class ModuleLevelDiagrammer extends Transform {
-  override def inputForm: CircuitForm = LowForm
-  override def outputForm: CircuitForm = LowForm
+class ModuleLevelDiagrammer(renderSvg: RenderSvg) extends Transform with DependencyAPIMigration {
+  override def prerequisites = Seq.empty
 
-  //scalastyle:off cyclomatic.complexity method.length
-  def execute(circuitState: CircuitState) : CircuitState = {
-    // (targetDir: String, backFileName: String)
+  override def optionalPrerequisites = Seq.empty
 
+  override def optionalPrerequisiteOf = Seq.empty
+
+  override def invalidates(a: Transform) = false
+
+  def execute(circuitState: CircuitState): CircuitState = {
     val c = circuitState.circuit
-    val targetDir = FirrtlDiagrammer.getTargetDir(circuitState.annotations)
-
+    val targetDir = circuitState.annotations.collectFirst { case TargetDirAnnotation(dir) => dir }.get
     val startModule = circuitState.annotations.collectFirst {
-      case StartModule(moduleName) => moduleName
+      case StartModuleNameAnnotation(moduleName) => moduleName
     }.getOrElse(circuitState.circuit.main)
 
     val TopLevel = startModule + "_hierarchy"
@@ -120,7 +104,7 @@ class ModuleLevelDiagrammer extends Transform {
     val moduleNodes = new mutable.ArrayBuffer[ModuleDotNode]()
     val connections = new mutable.ArrayBuffer[(String, String)]()
 
-    val outputFileName = new java.io.File(s"$targetDir$TopLevel.dot")
+    val outputFileName = new java.io.File(s"$targetDir/$TopLevel.dot")
     val printFile = new PrintWriter(outputFileName)
 
     printFile.write("digraph " + TopLevel + " { rankdir=\"TB\" \n node [shape=\"rectangle\"]; \n")
@@ -142,7 +126,7 @@ class ModuleLevelDiagrammer extends Transform {
         case Some(module: firrtl.ir.Module) =>
           val set = new mutable.HashSet[WDefInstance]()
           def onStmt(s: Statement): Statement = s match {
-            case b: Block => b map onStmt
+            case b: Block        => b.map(onStmt)
             case i: WDefInstance => set += i; i
             case other => other
           }
@@ -161,7 +145,7 @@ class ModuleLevelDiagrammer extends Transform {
       */
     def walk(wDefInstance: WDefInstance, path: String = ""): ModuleDotNode = {
       def expand(name: String): String = {
-        if(path.isEmpty) name else path + "_" + name
+        if (path.isEmpty) name else path + "_" + name
       }
 
       val dotNode = ModuleDotNode(wDefInstance.name, wDefInstance.module)
@@ -181,12 +165,12 @@ class ModuleLevelDiagrammer extends Transform {
     walk(top)
 
     // Render all the collected nodes
-    for(mod <- moduleNodes) {
+    for (mod <- moduleNodes) {
       printFile.append(mod.render)
     }
 
     // Render their connections
-    for((parent, child) <- connections) {
+    for ((parent, child) <- connections) {
       printFile.write(s"$parent -> $child\n")
     }
 
@@ -195,7 +179,7 @@ class ModuleLevelDiagrammer extends Transform {
 
     // Finish writing the file
     printFile.close()
-    FirrtlDiagrammer.render(s"$targetDir$TopLevel.dot")
+    renderSvg.render(s"$targetDir/$TopLevel.dot")
 
     circuitState
   }

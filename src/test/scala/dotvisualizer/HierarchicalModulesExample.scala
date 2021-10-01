@@ -1,31 +1,17 @@
-/*
-Copyright 2020 The Regents of the University of California (Regents)
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
 
 package dotvisualizer
 
+import java.io.{ByteArrayOutputStream, File, PrintStream}
+
 import chisel3._
-import org.scalatest._
+import chisel3.stage.{ChiselGeneratorAnnotation, ChiselStage}
+import dotvisualizer.stage.{DiagrammerStage, OpenCommandAnnotation, RankDirAnnotation, RankElementsAnnotation}
+import firrtl.options.TargetDirAnnotation
+import firrtl.stage.FirrtlSourceAnnotation
 import org.scalatest.freespec.AnyFreeSpec
 import org.scalatest.matchers.should.Matchers
-
-/**
-  * Circuit Top instantiates A and B and both A and B instantiate C
-  */
-
-//scalastyle:off magic.number
+import scala.language.reflectiveCalls
 
 /**
   * This class has parameterizable widths, it will generate different hardware
@@ -76,10 +62,10 @@ class VizModB(widthB: Int) extends Module {
 class TopOfVisualizer extends Module {
   //noinspection TypeAnnotation
   val io = IO(new Bundle {
-    val in1    = Input(UInt(32.W))
-    val in2    = Input(UInt(32.W))
+    val in1 = Input(UInt(32.W))
+    val in2 = Input(UInt(32.W))
     val select = Input(Bool())
-    val out    = Output(UInt(32.W))
+    val out = Output(UInt(32.W))
     val memOut = Output(UInt(32.W))
   })
   val x = Reg(UInt(32.W))
@@ -96,8 +82,7 @@ class TopOfVisualizer extends Module {
   when(io.select) {
     x := io.in1
     myMem(io.in1) := io.in2
-  }
-  .otherwise {
+  }.otherwise {
     x := io.in2
     io.memOut := myMem(io.in1)
   }
@@ -113,10 +98,40 @@ class TopOfVisualizer extends Module {
 
 class HierarchicalModulesExample extends AnyFreeSpec with Matchers {
 
-  """This is an example of a module with hierarchical submodules """  in {
-    val circuit = chisel3.Driver.elaborate(() => new TopOfVisualizer)
-    val firrtl = chisel3.Driver.emit(circuit)
-    val config = Config(targetDir = "test_run_dir/visualizer/", firrtlSource = firrtl)
-    FirrtlDiagrammer.run(config)
+  """This is an example of a module with hierarchical submodules """ in {
+    val targetFile = new File("test_run_dir/visualizer/VizModC_4.dot.svg")
+    if (targetFile.exists()) {
+      targetFile.delete()
+    }
+
+    val annos = Seq(
+      TargetDirAnnotation("test_run_dir/visualizer"),
+      ChiselGeneratorAnnotation(() => new TopOfVisualizer),
+      RankElementsAnnotation,
+      RankDirAnnotation("TB"),
+      OpenCommandAnnotation("")
+    )
+
+    val outputBuf = new ByteArrayOutputStream()
+    Console.withOut(new PrintStream(outputBuf)) {
+      (new DiagrammerStage).execute(Array.empty, annos)
+    }
+    val output = outputBuf.toString
+
+    // confirm user gets message
+    Seq(
+      "creating dot file test_run_dir/visualizer/TopOfVisualizer.dot",
+      "creating dot file test_run_dir/visualizer/VizModC_3.dot",
+      "creating dot file test_run_dir/visualizer/VizModA.dot",
+      "creating dot file test_run_dir/visualizer/VizModC_4.dot",
+      "creating dot file test_run_dir/visualizer/VizModB.dot",
+      "creating dot file test_run_dir/visualizer/VizModB_2.dot",
+      "creating dot file test_run_dir/visualizer/VizModC.dot"
+    ).foreach { fileString =>
+      output should include(fileString)
+    }
+    // confirm we have turned off opening file in browser
+    output should include("There is no program identified which will render the svg files")
+    targetFile.exists() should be(true)
   }
 }

@@ -1,32 +1,34 @@
-/*
-Copyright 2020 The Regents of the University of California (Regents)
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
 
 package dotvisualizer.transforms
 
 import dotvisualizer.ToLoFirrtl
+import dotvisualizer.stage.DiagrammerException
 import firrtl.ir._
-import firrtl.{CircuitForm, CircuitState, LowForm, Parser, Transform, WRef, WSubField, WSubIndex}
+import firrtl.stage.FirrtlCircuitAnnotation
+import firrtl.{
+  CircuitForm,
+  CircuitState,
+  DependencyAPIMigration,
+  FileUtils,
+  LowForm,
+  Parser,
+  Transform,
+  WRef,
+  WSubField,
+  WSubIndex
+}
 
 import scala.collection.mutable
 
-//scalastyle:off regex
+class RemoveTempWires extends Transform with DependencyAPIMigration {
+  override def prerequisites = Seq.empty
 
-class RemoveTempWires extends Transform {
-  override def inputForm: CircuitForm = LowForm
-  override def outputForm: CircuitForm = LowForm
+  override def optionalPrerequisites = Seq.empty
+
+  override def optionalPrerequisiteOf = Seq.empty
+
+  override def invalidates(a: Transform) = false
 
   /**
     * Foreach Module in a firrtl circuit
@@ -36,10 +38,11 @@ class RemoveTempWires extends Transform {
     * @param state to be altered
     * @return
     */
-  //scalastyle:off method.length cyclomatic.complexity
+
   def execute(state: CircuitState): CircuitState = {
 
     val c = state.circuit
+
     /**
       * removes all references to temp wires in module
       * @param module the module to be altered
@@ -81,16 +84,20 @@ class RemoveTempWires extends Transform {
       def removeGen(e: Expression): Expression = {
         e match {
           case wire: WRef =>
-            if ((wire.name.startsWith(RemoveTempWires.GenPrefix) ||
-                    wire.name.startsWith(RemoveTempWires.TempPrefix)) && toRemove.contains(wire.name)) {
+            if (
+              (wire.name.startsWith(RemoveTempWires.GenPrefix) ||
+              wire.name.startsWith(RemoveTempWires.TempPrefix)) && toRemove.contains(wire.name)
+            ) {
               val new_node = toRemove(wire.name)
               removeGen(new_node)
             } else {
               wire
             }
           case wire: WSubField =>
-            if ((wire.name.startsWith(RemoveTempWires.GenPrefix) ||
-                    wire.name.startsWith(RemoveTempWires.TempPrefix)) && toRemove.contains(wire.name)) {
+            if (
+              (wire.name.startsWith(RemoveTempWires.GenPrefix) ||
+              wire.name.startsWith(RemoveTempWires.TempPrefix)) && toRemove.contains(wire.name)
+            ) {
               val new_node = toRemove(wire.name)
               removeGen(new_node)
             } else {
@@ -140,19 +147,22 @@ class RemoveTempWires extends Transform {
   }
 }
 
-object RemoveTempWires  {
+object RemoveTempWires {
   val GenPrefix = "_GEN_"
   val TempPrefix = "_T_"
 
   def main(args: Array[String]): Unit = {
     args.headOption match {
       case Some(fileName) =>
-        val firrtlSource = io.Source.fromFile(fileName).getLines().mkString("\n")
-        val firrtl = ToLoFirrtl.lower(Parser.parse(firrtlSource))
+        val firrtlSource = FileUtils.getLines(fileName).mkString("\n")
+        val annos = (new ToLoFirrtl).transform(Seq(FirrtlCircuitAnnotation(Parser.parse(firrtlSource))))
+        val firrtl = annos.collectFirst { case FirrtlCircuitAnnotation(c) => c }.getOrElse {
+          throw new DiagrammerException("Error: could not process supplied firrtl")
+        }
 
         val grapher = new RemoveTempWires
 
-        val newState = grapher.execute(CircuitState(firrtl, LowForm, Seq.empty))
+        val newState = grapher.execute(CircuitState(firrtl, Seq.empty))
         println(s"${newState.circuit.serialize}")
 
       case _ =>

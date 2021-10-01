@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+
 import ammonite.ops._
 import ammonite.ops.ImplicitWd._
 import mill._
@@ -13,7 +15,7 @@ trait CrossUnRootedSbtModule extends CrossSbtModule {
 }
 
 trait CommonModule extends CrossUnRootedSbtModule with PublishModule {
-  def publishVersion = "1.3-SNAPSHOT"
+  def publishVersion = "1.5-SNAPSHOT"
 
   def pomSettings = PomSettings(
     description = artifactName(),
@@ -22,15 +24,16 @@ trait CommonModule extends CrossUnRootedSbtModule with PublishModule {
     licenses = Seq(License.`BSD-3-Clause`),
     versionControl = VersionControl.github("freechipsproject", "diagrammer"),
     developers = Seq(
-      Developer("chick",    "Charles Markley",     "https://github.com/chick"),
-      Developer("mgnica",   "Monica Kumaran",      "https://github.com/mgnica")
+      Developer("chick", "Charles Markley", "https://github.com/chick"),
+      Developer("mgnica", "Monica Kumaran", "https://github.com/mgnica")
     )
   )
 
   override def scalacOptions = Seq(
     "-deprecation",
     "-explaintypes",
-    "-feature", "-language:reflectiveCalls",
+    "-feature",
+    "-language:reflectiveCalls",
     "-unchecked",
     "-Xcheckinit",
     "-Xlint:infer-any",
@@ -40,41 +43,41 @@ trait CommonModule extends CrossUnRootedSbtModule with PublishModule {
   override def javacOptions = CommonBuild.javacOptionsVersion(crossScalaVersion)
 }
 
-val crossVersions = Seq("2.12.10", "2.11.12")
+val crossVersions = Seq("2.12.15", "2.13.6")
 
 // Make this available to external tools.
 object diagrammer extends Cross[DiagrammerModule](crossVersions: _*) {
-  def defaultVersion(ev: Evaluator) = T.command{
+  def defaultVersion(ev: Evaluator) = T.command {
     println(crossVersions.head)
   }
 
-  def compile = T{
+  def compile = T {
     diagrammer(crossVersions.head).compile()
   }
 
-  def jar = T{
+  def jar = T {
     diagrammer(crossVersions.head).jar()
   }
 
-  def test = T{
+  def test = T {
     diagrammer(crossVersions.head).test.test()
   }
 
-  def publishLocal = T{
+  def publishLocal = T {
     diagrammer(crossVersions.head).publishLocal()
   }
 
-  def docJar = T{
+  def docJar = T {
     diagrammer(crossVersions.head).docJar()
   }
 
-  def assembly = T{
+  def assembly = T {
     diagrammer(crossVersions.head).assembly()
   }
 }
 
 // Provide a managed dependency on X if -DXVersion="" is supplied on the command line.
-val defaultVersions = Map("chisel3" -> "3.4-SNAPSHOT")
+val defaultVersions = Map("chisel3" -> "3.5-SNAPSHOT")
 
 def getVersion(dep: String, org: String = "edu.berkeley.cs") = {
   val version = sys.env.getOrElse(dep + "Version", defaultVersions(dep))
@@ -101,4 +104,3 @@ class DiagrammerModule(val crossScalaVersion: String) extends CommonModule {
 
   def mainClass = Some("dotvisualizer.FirrtlDiagrammer")
 }
-

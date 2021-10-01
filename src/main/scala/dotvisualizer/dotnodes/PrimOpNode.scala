@@ -1,18 +1,4 @@
-/*
-Copyright 2020 The Regents of the University of California (Regents)
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
- */
+// SPDX-License-Identifier: Apache-2.0
 
 package dotvisualizer.dotnodes
 
@@ -28,18 +14,18 @@ object PrimOpNode {
 }
 
 case class BinaryOpNode(
-  name: String,
-  parentOpt: Option[DotNode],
+  name:         String,
+  parentOpt:    Option[DotNode],
   arg0ValueOpt: Option[String],
-  arg1ValueOpt: Option[String]
-) extends DotNode {
+  arg1ValueOpt: Option[String])
+    extends DotNode {
 
-  def in1: String = s"$absoluteName:in1"
-  def in2: String = s"$absoluteName:in2"
+  def in1:                   String = s"$absoluteName:in1"
+  def in2:                   String = s"$absoluteName:in2"
   override val absoluteName: String = s"op_${name}_${PrimOpNode.hash}"
-  override val asRhs: String = s"$absoluteName:out"
+  override val asRhs:        String = s"$absoluteName:out"
 
-  def render: String ={
+  def render: String = {
     s"""
        |$absoluteName [shape = "plaintext" label=<
        |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#D8BFD8">
@@ -57,11 +43,11 @@ case class BinaryOpNode(
 }
 
 case class UnaryOpNode(name: String, parentOpt: Option[DotNode]) extends DotNode {
-  def in1: String = s"$absoluteName:in1"
+  def in1:                   String = s"$absoluteName:in1"
   override val absoluteName: String = s"op_${name}_${PrimOpNode.hash}"
-  override val asRhs: String = s"$absoluteName:out"
+  override val asRhs:        String = s"$absoluteName:out"
 
-  def render: String ={
+  def render: String = {
     s"""
        |$absoluteName [shape = "plaintext" label=<
        |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#D8BFD8">
@@ -76,11 +62,11 @@ case class UnaryOpNode(name: String, parentOpt: Option[DotNode]) extends DotNode
 }
 
 case class OneArgOneParamOpNode(name: String, parentOpt: Option[DotNode], value: BigInt) extends DotNode {
-  def in1: String = s"$absoluteName:in1"
+  def in1:                   String = s"$absoluteName:in1"
   override val absoluteName: String = s"op_${name}_${PrimOpNode.hash}"
-  override val asRhs: String = s"$absoluteName:out"
+  override val asRhs:        String = s"$absoluteName:out"
 
-  def render: String ={
+  def render: String = {
     s"""
        |$absoluteName [shape = "plaintext" label=<
        |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#D8BFD8">
@@ -97,13 +83,16 @@ case class OneArgOneParamOpNode(name: String, parentOpt: Option[DotNode], value:
   }
 }
 case class OneArgTwoParamOpNode(
-                                 name: String, parentOpt: Option[DotNode],
-                                 value1: BigInt, value2: BigInt) extends DotNode {
-  def in1: String = s"$absoluteName:in1"
+  name:      String,
+  parentOpt: Option[DotNode],
+  value1:    BigInt,
+  value2:    BigInt)
+    extends DotNode {
+  def in1:                   String = s"$absoluteName:in1"
   override val absoluteName: String = s"op_${name}_${PrimOpNode.hash}"
-  override val asRhs: String = s"$absoluteName:out"
+  override val asRhs:        String = s"$absoluteName:out"
 
-  def render: String ={
+  def render: String = {
     s"""
        |$absoluteName [shape = "plaintext" label=<
        |<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#D8BFD8">
