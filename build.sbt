@@ -54,7 +54,7 @@ publishTo := {
 
 // Provide a managed dependency on X if -DXVersion="" is supplied on the command line.
 val defaultVersions = Map(
-  "chisel3" -> "3.5-SNAPSHOT"
+  "chisel3" -> "3.5.0"
 )
 
 libraryDependencies ++= Seq("chisel3").map { dep: String =>
@@ -62,7 +62,7 @@ libraryDependencies ++= Seq("chisel3").map { dep: String =>
 }
 
 libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest" % "3.2.9" % "test",
+  "org.scalatest" %% "scalatest" % "3.2.9" % "test"
 )
 
 scalacOptions in Compile ++= Seq(
