@@ -10,7 +10,7 @@ organization := "edu.berkeley.cs"
 version := "1.5-SNAPSHOT"
 autoAPIMappings := true
 scalaVersion := "2.12.14"
-crossScalaVersions := Seq("2.12.15", "2.13.6")
+crossScalaVersions := Seq("2.12.15", "2.13.8")
 
 publishMavenStyle := true
 publishArtifact in Test := false
@@ -62,7 +62,7 @@ libraryDependencies ++= Seq("chisel3").map { dep: String =>
 }
 
 libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest" % "3.2.9" % "test",
+  "org.scalatest" %% "scalatest" % "3.2.9" % "test"
 )
 
 scalacOptions in Compile ++= Seq(
