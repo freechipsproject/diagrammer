@@ -13,8 +13,7 @@ import org.scalatest.matchers.should.Matchers
 
 import scala.io.Source
 
-/**
-  * Checks that attaches are double headed arrows connected to each node
+/** Checks that attaches are double headed arrows connected to each node
   */
 class AttachExample extends AnyFreeSpec with Matchers {
 

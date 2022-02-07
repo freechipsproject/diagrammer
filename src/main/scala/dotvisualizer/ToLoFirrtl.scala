@@ -11,8 +11,7 @@ import firrtl.options.{Dependency, Phase}
 import firrtl.stage.{FirrtlCircuitAnnotation, Forms}
 import firrtl.transforms.BlackBoxSourceHelper
 
-/**
-  * Use these lowering transforms to prepare circuit for compiling
+/** Use these lowering transforms to prepare circuit for compiling
   */
 class ToLoFirrtl extends Phase {
   private val targets = Forms.LowFormOptimized ++ Seq(
@@ -34,8 +33,8 @@ class ToLoFirrtl extends Phase {
     annotationSeq.flatMap {
       case FirrtlCircuitAnnotation(circuit) =>
         val state = CircuitState(circuit, annotationSeq)
-        val newState = transforms.foldLeft(state) {
-          case (prevState, transform) => transform.runTransform(prevState)
+        val newState = transforms.foldLeft(state) { case (prevState, transform) =>
+          transform.runTransform(prevState)
         }
         Some(FirrtlCircuitAnnotation(newState.circuit))
       case other =>
@@ -44,8 +43,7 @@ class ToLoFirrtl extends Phase {
   }
 }
 
-/**
-  *  Workaround for https://github.com/freechipsproject/firrtl/issues/498 from @jackkoenig
+/**  Workaround for https://github.com/freechipsproject/firrtl/issues/498 from @jackkoenig
   */
 class FixupOps extends Transform with DependencyAPIMigration {
   override def prerequisites = Seq.empty

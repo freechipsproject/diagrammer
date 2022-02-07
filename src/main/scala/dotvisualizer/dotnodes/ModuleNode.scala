@@ -44,15 +44,14 @@ case class ModuleNode(
 
       val connectionTargetNames = connections.values.map(_.split(":").head).toSet
 
-      connections.foreach {
-        case (rhs, lhs) =>
-          val source = lhs.split(":").head
-          val target = rhs.split(":").head
+      connections.foreach { case (rhs, lhs) =>
+        val source = lhs.split(":").head
+        val target = rhs.split(":").head
 
-          if (target.nonEmpty && connectionTargetNames.contains(target)) {
-            linkedHashMap(source) += target
-            linkedHashMap(target)
-          }
+        if (target.nonEmpty && connectionTargetNames.contains(target)) {
+          linkedHashMap(source) += target
+          linkedHashMap(target)
+        }
       }
       DiGraph(linkedHashMap)
     }
@@ -91,8 +90,7 @@ case class ModuleNode(
     rankInfo + "\n  " + s"""{ rank=same; ${outputPorts.mkString(" ")} };"""
   }
 
-  /**
-    * Renders this node
+  /** Renders this node
     * @return
     */
   def render: String = {
