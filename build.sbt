@@ -54,7 +54,7 @@ publishTo := {
 
 // Provide a managed dependency on X if -DXVersion="" is supplied on the command line.
 val defaultVersions = Map(
-  "chisel3" -> "3.5-SNAPSHOT"
+  "chisel3" -> "3.5.0"
 )
 
 val chiselVersion = sys.props.getOrElse("chisel3Version", defaultVersions("chisel3"))
@@ -64,7 +64,7 @@ addCompilerPlugin("edu.berkeley.cs" % "chisel3-plugin" % chiselVersion cross Cro
 libraryDependencies += "edu.berkeley.cs" %% "chisel3" % chiselVersion
 
 libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest" % "3.2.9" % "test",
+  "org.scalatest" %% "scalatest" % "3.2.9" % "test"
 )
 
 scalacOptions in Compile ++= Seq(
