@@ -7,7 +7,7 @@ resolvers ++= Seq(
   Resolver.sonatypeRepo("releases")
 )
 organization := "edu.berkeley.cs"
-version := "1.5.0"
+version := "1.5.1"
 autoAPIMappings := true
 scalaVersion := "2.12.14"
 crossScalaVersions := Seq("2.12.15", "2.13.6")
@@ -54,7 +54,7 @@ publishTo := {
 
 // Provide a managed dependency on X if -DXVersion="" is supplied on the command line.
 val defaultVersions = Map(
-  "chisel3" -> "3.5.0"
+  "chisel3" -> "3.5.1"
 )
 
 libraryDependencies ++= Seq("chisel3").map { dep: String =>
