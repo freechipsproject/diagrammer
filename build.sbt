@@ -57,9 +57,11 @@ val defaultVersions = Map(
   "chisel3" -> "3.5.1"
 )
 
-libraryDependencies ++= Seq("chisel3").map { dep: String =>
-  "edu.berkeley.cs" %% dep % sys.props.getOrElse(dep + "Version", defaultVersions(dep))
-}
+val chiselVersion = sys.props.getOrElse("chisel3Version", defaultVersions("chisel3"))
+
+addCompilerPlugin("edu.berkeley.cs" % "chisel3-plugin" % chiselVersion cross CrossVersion.full)
+
+libraryDependencies += "edu.berkeley.cs" %% "chisel3" % chiselVersion
 
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "3.2.9" % "test",
